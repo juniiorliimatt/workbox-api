@@ -1,3 +1,5 @@
 package br.com.api.security.dto;
 
-public record UserApiDTO(String username) { }
+import java.util.UUID;
+
+public record UserApiDTO(UUID id, String username) { }

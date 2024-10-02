@@ -36,16 +36,16 @@ public class UserApiService implements UserDetailsService {
     public UserApiDTO save(final UserApiLoginDTO dto) {
         final var user = new UserApi(dto);
         final var userSaved = userApiRepository.save(user);
-        return new UserApiDTO(userSaved.getUsername());
+        return new UserApiDTO(userSaved.getId(), userSaved.getUsername());
     }
 
     public List<UserApiDTO> findAll() {
-        return userApiRepository.findAll().stream().map(user -> new UserApiDTO(user.getUsername())).toList();
+        return userApiRepository.findAll().stream().map(user -> new UserApiDTO(user.getId(),user.getUsername())).toList();
     }
 
     public UserApiDTO findById(final UUID id) {
         final var user = userApiRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return new UserApiDTO(user.getUsername());
+        return new UserApiDTO(user.getId(),user.getUsername());
     }
 
     public UserApiDTO update(final UserApiUpdateDTO dto) {
@@ -53,7 +53,7 @@ public class UserApiService implements UserDetailsService {
         user.setUsername(dto.username());
         user.setPassword(dto.password());
         final var updated = userApiRepository.save(user);
-        return new UserApiDTO(updated.getUsername());
+        return new UserApiDTO(updated.getId(),updated.getUsername());
     }
 
     public void delete(final UUID id) {

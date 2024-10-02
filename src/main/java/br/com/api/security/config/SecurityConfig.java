@@ -1,48 +1,51 @@
 package br.com.api.security.config;
 
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.OctetSequenceKey;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
+import br.com.api.security.services.JwtService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig{
-
-    @Value("${jwt.secret}")
-    private String secret;
+public class SecurityConfig {
 
     @Value("${admin.password}")
     private String adminPassword;
 
-    @Bean
-    public SecretKey secretKey() {
-        return Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final Environment env;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtAuthenticationConverter jwtAuthenticationConverter;
+
+    @Autowired
+    public SecurityConfig(Environment env, JwtService jwtService, PasswordEncoder passwordEncoder, JwtAuthenticationConverter jwtAuthenticationConverter) {
+        this.env = env;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtAuthenticationConverter = jwtAuthenticationConverter;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
+            httpSecurity.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
+        }
+
         return httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
@@ -52,7 +55,8 @@ public class SecurityConfig{
                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                        oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+                .addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
@@ -63,37 +67,14 @@ public class SecurityConfig{
         authenticationManagerBuilder
                 .inMemoryAuthentication()
                 .withUser("admin")
-                .password(passwordEncoder().encode(adminPassword))
+                .password(passwordEncoder.encode(adminPassword))
                 .roles("ADMIN");
         return authenticationManagerBuilder.build();
     }
 
     @Bean
-    public JwtEncoder jwtEncoder() {
-        SecretKey secretKey = secretKey();
-        JWK jwk = new OctetSequenceKey.Builder(secretKey).build();
-        JWKSet jwkSet = new JWKSet(jwk);
-        return new NimbusJwtEncoder((jwkSelector, context) -> jwkSelector.select(jwkSet));
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        SecretKey secretKey = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
-    }
-
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        return new JwtAuthenticationConverter();
     }
 
 }

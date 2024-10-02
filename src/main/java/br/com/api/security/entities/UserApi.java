@@ -40,6 +40,7 @@ public class UserApi implements UserDetails {
     public UserApi(UserApiLoginDTO dto) {
         this.username = dto.username();
         this.password = dto.password();
+        this.enabled = dto.enabled();
     }
 
     @Override
