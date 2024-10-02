@@ -1,4 +1,4 @@
-package br.com.api.security.config;
+package br.com.api.config;
 
 import br.com.api.security.entities.UserApi;
 import br.com.api.security.repositories.UserApiRepository;
@@ -13,9 +13,12 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.time.LocalDateTime;
 
 @Configuration
 public class AppConfig {
+
+    private static final String ADMIN = "admin";
 
     @Value("${admin.password}")
     private String adminPassword;
@@ -35,7 +38,15 @@ public class AppConfig {
 
     @Bean
     public CommandLineRunner loadData(UserApiRepository userApiRepository, PasswordEncoder passwordEncoder) {
-        return args -> userApiRepository.save(new UserApi(null, "admin", passwordEncoder.encode(adminPassword), true));
+        return args -> userApiRepository.save(
+                new UserApi(null
+                        , ADMIN
+                        , passwordEncoder.encode(adminPassword)
+                        , true
+                        , LocalDateTime.now()
+                        , LocalDateTime.now()
+                        , ADMIN
+                        , ADMIN));
     }
 
     @Bean
