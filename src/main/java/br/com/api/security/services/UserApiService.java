@@ -23,7 +23,7 @@ public class UserApiService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserApiService(UserApiRepository userApiRepository, final PasswordEncoder passwordEncoder) {
+    public UserApiService(final UserApiRepository userApiRepository, final PasswordEncoder passwordEncoder) {
         this.userApiRepository = userApiRepository;
         this.passwordEncoder = passwordEncoder;
     }

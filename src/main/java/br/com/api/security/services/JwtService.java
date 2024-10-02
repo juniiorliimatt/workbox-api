@@ -43,43 +43,56 @@ public class JwtService extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    private String createToken(Map<String, Object> claims, String subject, long validityInMilliseconds) {
+        final var now = new Date();
+        final var validity = new Date(now.getTime() + validityInMilliseconds);
+        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(now).setExpiration(validity).signWith(secretKey, SignatureAlgorithm.HS256).compact();
+    }
+
     public String generateToken(final String username) {
         final var claims = new HashMap<String, Object>();
-        return createToken(claims, username);
+        return createToken(claims, username, 1_000 * 60 * 15L);
     }
 
     public String generateRefreshToken(String username) {
         final var claims = new HashMap<String, Object>();
-        return createToken(claims, username, 1_000 * 24 * 60 * 60L);
+        return createToken(claims, username, 1_000 * 60 * 60 * 24L);
     }
 
-    public String validateToken(String token) {
+    private String validateToken(String token) {
         try {
             final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
             return claims.getSubject();
         } catch (JwtException e) {
-            throw new InvalidTokenException("Token inválido ou expirado");
+            throw new InvalidTokenException("Invalid token or expired");
         }
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        final var authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            final var token = authHeader.substring(7);
+            final var username = validateToken(token);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }
+        }
+        filterChain.doFilter(request, response);
     }
 
     public String validateRefreshToken(String refreshToken) {
         try {
             final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(refreshToken).getBody();
-
             if (claims.getExpiration().before(new Date())) {
                 throw new InvalidRefreshTokenException("Token expired");
             }
-
             return claims.getSubject();
-
         } catch (Exception e) {
             throw new InvalidRefreshTokenException("Invalid refresh token", e);
         }
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
     @Bean
@@ -89,32 +102,8 @@ public class JwtService extends OncePerRequestFilter {
         return new NimbusJwtEncoder((jwkSelector, context) -> jwkSelector.select(jwkSet));
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        final var authHeader = request.getHeader("Authorization");
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            final var token = authHeader.substring(7);
-            final var username = validateToken(token);
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }
-        }
-
-        filterChain.doFilter(request, response);
-    }
-
-    private String createToken(Map<String, Object> claims, String subject) {
-        return createToken(claims, subject, 1_000 * 5 * 60L);
-    }
-
-    private String createToken(Map<String, Object> claims, String subject, long validityInMilliseconds) {
-        final var now = new Date();
-        final var validity = new Date(now.getTime() + validityInMilliseconds);
-
-        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(now).setExpiration(validity).signWith(secretKey, SignatureAlgorithm.HS256).compact();
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 }
