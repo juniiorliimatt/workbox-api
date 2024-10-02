@@ -13,7 +13,7 @@ import java.util.List;
 public class ErrorResponse implements Serializable {
 
     @Setter
-    private Instant timeStamp;
+    private Instant timestamp;
 
     @Setter
     private int status;
