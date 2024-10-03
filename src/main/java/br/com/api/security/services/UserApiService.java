@@ -24,6 +24,8 @@ import java.util.UUID;
 @Service
 public class UserApiService implements UserDetailsService {
 
+    private static final String USER_NOT_FOUND = "User not found";
+
     private static final Logger logger = LoggerFactory.getLogger(UserApiService.class);
     private final UserApiRepository userApiRepository;
     private final PasswordEncoder passwordEncoder;
@@ -37,7 +39,7 @@ public class UserApiService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
         logger.info("load by username");
-        return userApiRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
+        return userApiRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +51,7 @@ public class UserApiService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public UserApiDTO findById(final UUID id) {
-        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         return new UserApiDTO(user.getId(),user.getUsername(), user.getEnabled());
     }
 
@@ -63,7 +65,7 @@ public class UserApiService implements UserDetailsService {
 
     @Transactional
     public UserApiDTO update(final UserApiInsertOrUpdateDTO dto) {
-        final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         user.setUsername(dto.username());
         user.setPassword(passwordEncoder.encode(dto.password()));
         final var updated = userApiRepository.save(user);
@@ -73,7 +75,8 @@ public class UserApiService implements UserDetailsService {
     @Transactional
     public void delete(final UUID id) {
         try {
-            userApiRepository.deleteById(id);
+            final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+            userApiRepository.deleteById(user.getId());
         } catch (IllegalArgumentException e) {
             throw new ResourceNotFoundException("Id is null");
         } catch (DataIntegrityViolationException e) {

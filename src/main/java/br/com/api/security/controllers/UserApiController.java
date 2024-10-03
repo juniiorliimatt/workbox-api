@@ -43,8 +43,7 @@ public class UserApiController {
     @PostMapping
     @UserApiFindAll
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<UserApiDTO> save(@RequestBody final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO,
-                                                         UriComponentsBuilder uriBuilder) {
+    public ResponseEntity<UserApiDTO> save(@RequestBody final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO,final UriComponentsBuilder uriBuilder) {
         final var newUser = userApiService.save(userApiInsertOrUpdateDTO);
         URI uri = uriBuilder.path("/user/{id}").buildAndExpand(newUser.id()).toUri();
         return ResponseEntity.created(uri).body(newUser);
