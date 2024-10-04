@@ -1,3 +1,15 @@
 databaseChangeLog:
   - include:
-      file: db/changelog/v0.0.1/test.sql
+      file: db/changelog/v0.0.1/create/create_extension_uuid.sql
+  - include:
+        file: db/changelog/v0.0.1/create/create_table_roles.sql
+  - include:
+      file: db/changelog/v0.0.1/create/create_table_users_api.sql
+  - include:
+      file: db/changelog/v0.0.1/create/create_table_user_roles.sql
+  - include:
+      file: db/changelog/v0.0.1/insert/insert_roles.sql
+  - include:
+      file: db/changelog/v0.0.1/insert/insert_user_api.sql
+  - include:
+      file: db/changelog/v0.0.1/insert/insert_user_roles.sql
