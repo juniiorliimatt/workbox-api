@@ -1,12 +1,13 @@
 package br.com.api.security.controllers;
 
-import br.com.api.config.AppConfigTest;
 import br.com.api.security.dto.UserApiDTO;
+import br.com.api.security.entities.Role;
 import br.com.api.security.entities.UserApi;
 import br.com.api.security.repositories.UserApiRepository;
 import br.com.api.security.services.UserApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +15,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
@@ -26,15 +26,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ActiveProfiles("test")
-@Import(AppConfigTest.class)
+@Import(ApiControllerTestConfig.class)
 @WebMvcTest(UserApiController.class)
 @MockBean(JpaMetamodelMappingContext.class)
 class UserApiControllerTest {
 
-    private static final String USER_TEST = "user_test";
     private static final String USERNAME = "username";
+    private static final String PASSWORD = "username";
 
     private UUID id;
+
+    private UserApi userApi;
+
+    private Role role;
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,17 +56,27 @@ class UserApiControllerTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         this.id = UUID.randomUUID();
+        this.userApi = UserApi.builder()
+                .id(this.id)
+                .username(USERNAME)
+                .password(PASSWORD)
+                .isEnabled(true)
+                .isAccountNonExpired(true)
+                .isAccountNonLocked(true)
+                .isCredentialsNonExpired(true)
+                .build();
+        this.role = Role.builder().id(1L).authority("TEST").users(Set.of(userApi)).build();
+        userApi.setRoles(Set.of(role));
     }
 
     @Test
+    @DisplayName(value = "Get UserById")
     void testGetUserApiById() throws Exception {
-        final var user = new UserApi(this.id, USERNAME, USERNAME, true, LocalDateTime.now(), LocalDateTime.now(), USER_TEST, USER_TEST);
-        final var userApiDto = new UserApiDTO(user.getId(), user.getUsername(), user.getEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getIsEnabled());
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
-
-        mockMvc.perform(get("/user/"+this.id))
+        mockMvc.perform(get("/user/" + this.id))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentType("application/hal+json"))
                 .andExpect(jsonPath("$.username").value(USERNAME));
     }
 }

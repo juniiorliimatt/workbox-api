@@ -30,8 +30,9 @@ public class AuthController {
         if (!userApiService.validateCredentials(userApiLoginCredentialsDTO.username(), userApiLoginCredentialsDTO.password())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid username or password"));
         }
-        String token = jwtService.generateToken(userApiLoginCredentialsDTO.username());
-        String refreshToken = jwtService.generateRefreshToken(userApiLoginCredentialsDTO.username());
+        final var userDetails = userApiService.loadUserByUsername(userApiLoginCredentialsDTO.username());
+        String token = jwtService.generateToken(userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails.getUsername());
         Map<String, String> tokens = new HashMap<>();
         tokens.put("access_token", token);
         tokens.put("refresh_token", refreshToken);
@@ -42,7 +43,8 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> refresh(@RequestParam String refreshToken) {
         try {
             String username = jwtService.validateRefreshToken(refreshToken);
-            String newAccessToken = jwtService.generateToken(username);
+            final var userDetails = userApiService.loadUserByUsername(username);
+            String newAccessToken = jwtService.generateToken(userDetails);
             Map<String, String> tokens = new HashMap<>();
             tokens.put("access_token", newAccessToken);
             return ResponseEntity.ok(tokens);

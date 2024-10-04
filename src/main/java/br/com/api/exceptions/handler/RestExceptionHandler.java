@@ -25,7 +25,6 @@ public class RestExceptionHandler {
 
     private static final HttpStatus BAD_REQUEST = HttpStatus.BAD_REQUEST;
     private static final HttpStatus NOT_FOUND = HttpStatus.NOT_FOUND;
-    private static final HttpStatus UNPROCESSABLE_ENTITY = HttpStatus.UNPROCESSABLE_ENTITY;
 
     @ExceptionHandler(JwtException.class)
     public ResponseEntity<ErrorResponse> handlerJwtException(final JwtException exception, final HttpServletRequest request) {
@@ -100,17 +99,27 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(final ConstraintViolationException exception, final HttpServletRequest request) {
-        final var errorResponse = ErrorResponse.builder()
+        final var constraintViolations = exception.getConstraintViolations();
+        final List<FieldError> fieldErrors = constraintViolations
+                .stream()
+                .map(error -> {
+                    final FieldError fieldError = new FieldError();
+                    fieldError.setField(error.getPropertyPath().toString());
+                    fieldError.setErrorCode(error.getMessage());
+                    return fieldError;
+                }).toList();
+
+        final var errorResponse = ErrorResponse
+                .builder()
                 .timestamp(Instant.now())
-                .status(UNPROCESSABLE_ENTITY.value())
-                .statusName(UNPROCESSABLE_ENTITY.name())
-                .message(exception.getMessage())
+                .status(BAD_REQUEST.value())
+                .statusName(BAD_REQUEST.name())
                 .path(request.getRequestURI())
                 .exception(exception.getClass().getSimpleName())
-                .fieldErrors(List.of())
+                .fieldErrors(fieldErrors)
                 .build();
 
-        return ResponseEntity.status(UNPROCESSABLE_ENTITY).body(errorResponse);
+        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
     }
 
     @ExceptionHandler(DatabaseException.class)

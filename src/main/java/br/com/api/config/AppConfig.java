@@ -1,26 +1,26 @@
 package br.com.api.config;
 
-import br.com.api.security.entities.UserApi;
-import br.com.api.security.repositories.UserApiRepository;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableJpaAuditing
 public class AppConfig {
-
-    private static final String ADMIN = "admin";
 
     @Value("${admin.password}")
     private String adminPassword;
@@ -35,24 +35,32 @@ public class AppConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public CommandLineRunner loadData(UserApiRepository userApiRepository, PasswordEncoder passwordEncoder) {
-        return args -> userApiRepository.save(
-                new UserApi(null,
-                        ADMIN,
-                        passwordEncoder.encode(adminPassword),
-                        true,
-                        LocalDateTime.now(),
-                        LocalDateTime.now(),
-                        ADMIN,
-                        ADMIN));
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        return new JwtAuthenticationConverter();
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            Object rolesObject = jwt.getClaims().get("roles");
+            if (rolesObject instanceof List<?> rolesList) {
+                for (Object roleObj : rolesList) {
+                    if (roleObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> roleMap = (Map<String, String>) roleObj;
+                        authorities.add(new SimpleGrantedAuthority(roleMap.get("authority")));
+                    } else if (roleObj instanceof String roleObjS) {
+                        authorities.add(new SimpleGrantedAuthority(roleObjS));
+                    }
+                }
+            } else if (rolesObject instanceof String rolesString) {
+                Arrays.stream(rolesString.split(","))
+                        .map(SimpleGrantedAuthority::new)
+                        .forEach(authorities::add);
+            }
+            return authorities;
+        });
+        return converter;
     }
 }

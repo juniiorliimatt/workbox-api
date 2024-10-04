@@ -1,49 +1,62 @@
 package br.com.api.security.entities;
 
 import br.com.api.security.dto.UserApiInsertOrUpdateDTO;
-import br.com.api.security.dto.UserApiLoginCredentialsDTO;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 @Setter
 @Entity
-@EntityListeners(AuditingEntityListener.class)
-@Table(name = "users_api")
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "users_api")
+@EntityListeners(AuditingEntityListener.class)
 public class UserApi implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @NotBlank(message = "Username is mandatory")
+    @Size(min = 5, max = 50)
     @Column(nullable = false, unique = true)
+    @NotBlank(message = "Username is mandatory")
     private String username;
 
-    @NotBlank(message = "password is mandatory")
     @Column(nullable = false)
+    @NotBlank(message = "password is mandatory")
+    @NotBlank(message = "Required field")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
+    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @JoinTable(name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
+
     @Column(nullable = false)
-    private Boolean enabled;
+    private Boolean isEnabled;
+
+    private Boolean isAccountNonExpired;
+
+    private Boolean isAccountNonLocked;
+
+    private Boolean isCredentialsNonExpired;
 
     @CreatedDate
     @Column(updatable = false)
@@ -53,40 +66,35 @@ public class UserApi implements UserDetails {
     private LocalDateTime updatedAt;
 
     @CreatedBy
+    @Column(updatable = false)
     private String createdBy;
 
     @LastModifiedBy
-    private String lastModifiedBy;
-
+    private String updatedBy;
 
     public UserApi(UserApiInsertOrUpdateDTO dto) {
         this.username = dto.username();
         this.password = dto.password();
-        this.enabled = dto.enabled();
+        this.isEnabled = dto.isEnabled();
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getAuthority()))
+                .toList();
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
+    @PrePersist
+    public void prePersist() {
+        this.isAccountNonExpired = Objects.isNull(isAccountNonExpired) ? Boolean.TRUE : this.isCredentialsNonExpired;
+        this.isAccountNonLocked = Objects.isNull(isAccountNonLocked) ? Boolean.TRUE : this.isAccountNonLocked;
+        this.isCredentialsNonExpired = Objects.isNull(isCredentialsNonExpired) ? Boolean.TRUE : this.isCredentialsNonExpired;
+        this.isEnabled = Objects.isNull(isEnabled) ? Boolean.TRUE : this.isEnabled;
     }
 
     @Override
     public boolean isEnabled() {
-        return enabled;
+        return isEnabled;
     }
 }

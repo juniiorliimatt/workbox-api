@@ -16,9 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -30,18 +31,20 @@ import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService extends OncePerRequestFilter {
 
     private final SecretKey secretKey;
-    private final UserDetailsService userDetailsService;
+    private final UserApiService userApiService;
 
     @Autowired
-    public JwtService(SecretKey secretKey, UserDetailsService userDetailsService) {
+    public JwtService(SecretKey secretKey, UserApiService userApiService) {
         this.secretKey = secretKey;
-        this.userDetailsService = userDetailsService;
+        this.userApiService = userApiService;
     }
 
     private String createToken(Map<String, Object> claims, String subject, long validityInMilliseconds) {
@@ -50,9 +53,16 @@ public class JwtService extends OncePerRequestFilter {
         return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(now).setExpiration(validity).signWith(secretKey, SignatureAlgorithm.HS256).compact();
     }
 
-    public String generateToken(final String username) {
+    public String generateToken(final UserDetails userDetails) {
         final var claims = new HashMap<String, Object>();
-        return createToken(claims, username, 1_000 * 60 * 15L);
+        claims.put("roles", userDetails.getAuthorities().stream()
+                .map(grantedAuthority -> {
+                    String authority = grantedAuthority.getAuthority();
+                    return authority.startsWith("ROLE_") ? authority : "ROLE_" + authority;
+                })
+                .toList());
+        claims.put("scope", "read write");
+        return createToken(claims, userDetails.getUsername(), 1_000 * 60 * 15L);
     }
 
     public String generateRefreshToken(String username) {
@@ -60,24 +70,13 @@ public class JwtService extends OncePerRequestFilter {
         return createToken(claims, username, 1_000 * 60 * 60 * 24L);
     }
 
-    private String validateToken(String token) {
-        try {
-            final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
-            return claims.getSubject();
-        } catch (JwtException e) {
-            throw new InvalidTokenException("Invalid token or expired");
-        }
-    }
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
         final var authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final var token = authHeader.substring(7);
-            final var username = validateToken(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            final var authenticationToken = getAuthentication(token);
+            if (authenticationToken != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }
@@ -106,5 +105,24 @@ public class JwtService extends OncePerRequestFilter {
     @Bean
     public JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withSecretKey(secretKey).build();
+    }
+
+    private UsernamePasswordAuthenticationToken getAuthentication(String token) {
+        try {
+            final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
+            String username = claims.getSubject();
+            final var userDetail = userApiService.loadUserByUsername(username);
+            final var roles = (List<String>) claims.get("roles");
+            List<GrantedAuthority> authorities = roles.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
+
+            if (username != null) {
+                return new UsernamePasswordAuthenticationToken(username, userDetail.getPassword(), authorities);
+            }
+            return null;
+        } catch (JwtException e) {
+            throw new InvalidTokenException("Invalid token or expired");
+        }
     }
 }
