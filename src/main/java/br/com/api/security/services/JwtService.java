@@ -50,7 +50,14 @@ public class JwtService extends OncePerRequestFilter {
     private String createToken(Map<String, Object> claims, String subject, long validityInMilliseconds) {
         final var now = new Date();
         final var validity = new Date(now.getTime() + validityInMilliseconds);
-        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(now).setExpiration(validity).signWith(secretKey, SignatureAlgorithm.HS256).compact();
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(validity)
+                .signWith(secretKey, SignatureAlgorithm.HS256)
+                .compact();
     }
 
     public String generateToken(final UserDetails userDetails) {
@@ -107,6 +114,7 @@ public class JwtService extends OncePerRequestFilter {
         return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
+    @SuppressWarnings("unchecked")
     private UsernamePasswordAuthenticationToken getAuthentication(String token) {
         try {
             final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();

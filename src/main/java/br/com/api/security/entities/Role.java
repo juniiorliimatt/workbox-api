@@ -2,7 +2,10 @@ package br.com.api.security.entities;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -17,7 +20,6 @@ import java.util.Set;
 
 @Entity
 @Getter
-@Builder
 @Table(name = "roles")
 @NoArgsConstructor
 @AllArgsConstructor
