@@ -23,7 +23,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/user")
 public class UserApiController {
 
     private final UserApiService userApiService;
@@ -40,7 +40,7 @@ public class UserApiController {
         return ResponseEntity.ok(userApiService.findAll(pageable));
     }
 
-    @GetMapping
+    @GetMapping("/find-all")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<CollectionModel<UserApiDTO>> findAll() {
@@ -66,7 +66,7 @@ public class UserApiController {
         return ResponseEntity.ok().body(resource);
     }
 
-    @PostMapping
+    @PostMapping("/save")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<UserApiDTO> save(@RequestBody @Valid final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO, final UriComponentsBuilder uriBuilder) {
@@ -75,7 +75,7 @@ public class UserApiController {
         return ResponseEntity.created(uri).body(newUser);
     }
 
-    @PutMapping
+    @PutMapping("/update")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<UserApiDTO> update(@RequestBody @Valid final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO) {

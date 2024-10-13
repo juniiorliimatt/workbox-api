@@ -23,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -53,22 +54,30 @@ public class SecurityConfig {
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
         httpSecurity.httpBasic(AbstractHttpConfigurer::disable);
         httpSecurity.cors(AbstractHttpConfigurer::disable);
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers("/h2-console/**").permitAll());
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/**").permitAll());
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll());
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.GET, BAR + USER).hasAnyRole(ROLE_ADMIN, ROLE_USER));
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.POST, BAR + USER).hasRole(ROLE_ADMIN));
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.PUT, BAR + USER).hasRole(ROLE_ADMIN));
-        httpSecurity.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.DELETE, BAR + USER + "/**").hasRole(ROLE_ADMIN));
-        httpSecurity.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
+
+        httpSecurity.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers(HttpMethod.GET, BAR + USER).hasAnyRole(ROLE_ADMIN, ROLE_USER)
+                .requestMatchers(HttpMethod.POST, BAR + USER).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.PUT, BAR + USER).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.DELETE, BAR + USER + "/**").hasRole(ROLE_ADMIN)
+                .requestMatchers("/","/*.html", "/assets/*.css", "/assets/*.js", "/assets/*.svg").permitAll()
+                .anyRequest().authenticated()
+        );
+
         httpSecurity.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+
         httpSecurity.userDetailsService(userApiService).exceptionHandling(exceptionHandling ->
                 exceptionHandling.authenticationEntryPoint(
                         (request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
                 )
         );
+
         httpSecurity.addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class);
+
         return httpSecurity.build();
     }
 
@@ -91,7 +100,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();
-        configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:5173/"));
+        configuration.setAllowedOrigins(List.of("http://127.0.0.1:5173/"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173/"));
         configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
