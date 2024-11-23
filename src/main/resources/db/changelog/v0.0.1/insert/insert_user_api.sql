@@ -1,3 +1,3 @@
-INSERT INTO users_api ( id, username, password, is_enabled, is_account_non_expired, is_account_non_locked, is_credentials_non_expired, created_at, created_by, updated_at, updated_by)
+INSERT INTO api.users_api ( id, username, password, is_enabled, is_account_non_expired, is_account_non_locked, is_credentials_non_expired, created_at, created_by, updated_at, updated_by)
 VALUES ( 'c269e6c8-ed9a-4204-9e84-96414776b21a', 'admin', '$2a$12$daCzz/AQ7plxV200FuyQn.4JRNdGAcxKVDQjn9gQ0wqozZxpRn6NS', true, true, true, true, current_timestamp, 'API', current_timestamp, 'API'),
        ( 'd310d667-3eb9-46cc-84fc-e538ec65e8b3', 'user', '$2a$12$0.AX3SuOcP1mFEUJ2cL//eQxgTHGn3NEKwDk0ZrhRtEaJsejY7Y5i', true, true, true, true, current_timestamp, 'API', current_timestamp, 'API');

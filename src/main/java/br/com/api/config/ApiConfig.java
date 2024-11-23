@@ -21,7 +21,7 @@ import java.util.Map;
 
 @Configuration
 @EnableJpaAuditing
-public class AppConfig implements WebMvcConfigurer {
+public class ApiConfig implements WebMvcConfigurer {
 
     @Value("${admin.password}")
     private String adminPassword;
