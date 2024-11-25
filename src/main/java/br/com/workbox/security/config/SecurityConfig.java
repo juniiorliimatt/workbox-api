@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, BAR + USER).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.PUT, BAR + USER).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, BAR + USER + "/**").hasRole(ROLE_ADMIN)
-                .requestMatchers("/","/*.html", "/assets/*.css", "/assets/*.js", "/assets/*.svg").permitAll()
+                .requestMatchers("/","/*.html", "/assets/*.css", "/assets/*.js", "/assets/*.svg", "/assets/*.png", "/*.png").permitAll()
                 .anyRequest().authenticated()
         );
 
