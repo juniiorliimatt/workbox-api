@@ -1,1 +1,8 @@
-rootProject.name = 'api'
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'workbox-api'
