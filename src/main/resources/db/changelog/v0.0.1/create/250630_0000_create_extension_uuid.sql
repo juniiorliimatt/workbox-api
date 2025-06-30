@@ -1,19 +1,14 @@
 -- liquibase formatted sql
 
--- changeset junior.lima:create_extension-00 context:structure
--- comment create extension pgcrypto
--- preconditions onFail:MARK_RAN onError:HALT
--- precondition-sql-check expectedResult:0 SELECT count(*) FROM pg_extension pe where UPPER(pe.extname) = UPPER('pgcrypto');
--- Author: Junior Lima
--- Date: 2024-11-23
--- Description: Cria a extensão 'pgcrypto'
+-- changeset oojuniin:create-extension-pgcrypto context:structure
+-- comment: Cria a extensão 'pgcrypto' se ela não existir.
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- rollback DROP EXTENSION IF EXISTS "pgcrypto";
 
--- changeset junior.lima:create_extension-01 context:structure
--- comment create extension uuid-ossp
--- preconditions onFail:MARK_RAN onError:HALT
--- precondition-sql-check expectedResult:0 SELECT count(*) FROM pg_extension pe where UPPER(pe.extname) = UPPER('uuid-ossp');
--- Author: Junior Lima
--- Date: 2024-11-23
--- Description: Cria a extensão 'uuid-ossp'
+
+-- changeset oojuniin:create-extension-uuid-ossp context:structure
+-- comment: Cria a extensão 'uuid-ossp' se ela não existir.
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- rollback DROP EXTENSION IF EXISTS "uuid-ossp";
+
+
