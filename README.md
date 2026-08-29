@@ -54,9 +54,9 @@ Profiles disponíveis (`spring.profiles.active`):
 ```
 
 Variáveis de ambiente relevantes: `PORT` (default 8080), `JWT_SECRET`, `DATABASE_URL`,
-`POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_api`/`workbox_api` — role
-restrito ao schema `api`/`api_liquibase`, não o superusuário), `SCHEMA` (default
-`api`), `admin.password`.
+`POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_service`/`workbox_service` — role
+restrito ao schema `workbox`/`workbox_liquibase`, não o superusuário), `SCHEMA` (default
+`workbox`), `admin.password`.
 
 Postgres local sobe via `docker-compose.yml` na raiz do monorepo (ver [README
 raiz](../README.md#rodando-localmente)) na porta **5433**, não 5432 — passe
