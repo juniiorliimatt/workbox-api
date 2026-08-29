@@ -1,7 +1,8 @@
 # workbox-api
 
-Backend REST do [monorepo `workbox`](../README.md) — API de autenticação/usuários,
-servida junto com o build do [`workbox-app`](../workbox-app/README.md) num único JAR.
+Backend REST do [monorepo `workbox`](../README.md) — API de autenticação/usuários.
+Sobe isolado (nativo via `bootRun` ou containerizado via `Dockerfile`); não serve o
+frontend [`workbox-app`](../workbox-app/README.md), que roda standalone à parte.
 
 Também espelhado no [GitHub](https://github.com/juniiorliimatt/workbox-api) — todo push
 pro GitLab é replicado automaticamente via git hook. Ver
@@ -117,10 +118,10 @@ autenticação/DB.
 
 ## Deploy
 
-Single-jar: o build do `workbox-app` (`npm run build`) escreve direto em
-`src/main/resources/static/`, e `FrontendController` serve o `index.html` na raiz —
-um único artefato sobe API + SPA. `Procfile`/`system.properties` configuram deploy
-estilo Heroku (JDK 26).
+Só a API neste artefato — `workbox-app` sobe separado (nativo ou em container próprio,
+ver [README raiz](../README.md#rodando-tudo-em-containers)). `Procfile`/
+`system.properties` configuram deploy estilo Heroku (JDK 26); `Dockerfile` (multi-stage,
+non-root) pra deploy containerizado.
 
 ## Referências
 
