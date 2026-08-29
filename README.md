@@ -3,6 +3,10 @@
 Backend REST do [monorepo `workbox`](../README.md) — API de autenticação/usuários,
 servida junto com o build do [`workbox-app`](../workbox-app/README.md) num único JAR.
 
+Também espelhado no [GitHub](https://github.com/juniiorliimatt/workbox-api) — todo push
+pro GitLab é replicado automaticamente via git hook. Ver
+[README raiz](../README.md#espelho-no-github--git-hooks).
+
 ## Stack
 
 | Camada | Tecnologia |
