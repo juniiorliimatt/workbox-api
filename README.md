@@ -110,7 +110,7 @@ intencionalmente os beans de segurança (`spring.main.allow-bean-definition-over
 no profile `test`) para isolar os testes de controller do fluxo real de
 autenticação/DB.
 
-### BDD com Cucumber — fluxo de implementação
+### BDD com Cucumber: fluxo de implementação
 
 `./gradlew test` já roda os `.feature` junto (JUnit Platform descobre `RunCucumberTest`
 via `@Suite`/`@IncludeEngines("cucumber")`, sem task separada). Exemplo real:
