@@ -8,5 +8,6 @@ import java.util.UUID;
 public record UserApiInsertOrUpdateDTO(UUID id,
                                        String username,
                                        String password,
+                                       String email,
                                        boolean isEnabled,
                                        Set<Role> roles) { }

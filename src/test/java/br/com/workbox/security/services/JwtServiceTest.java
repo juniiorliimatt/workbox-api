@@ -56,13 +56,15 @@ class JwtServiceTest {
                 .isAccountNonExpired(true)
                 .isAccountNonLocked(true)
                 .isCredentialsNonExpired(true)
+                .tokenVersion(0L)
                 .roles(Set.of(Role.builder().id(1L).authority("USER").build()))
                 .build();
     }
 
-    private String rawToken(String typ, String subject, long validityMs) {
+    private String rawToken(String typ, String subject, long validityMs, long tokenVersion) {
         final var claims = new HashMap<String, Object>();
         claims.put("typ", typ);
+        claims.put("tv", tokenVersion);
         claims.put("roles", List.of("ROLE_USER"));
         final var now = new Date();
         return Jwts.builder()
@@ -79,7 +81,7 @@ class JwtServiceTest {
     class Generation {
 
         @Test
-        @DisplayName("access token carrega typ=access, subject e roles prefixadas")
+        @DisplayName("access token carrega typ=access, subject, tv e roles prefixadas")
         void accessTokenClaims() {
             final var user = enabledUser("alice");
             final var token = jwtService.generateToken(user);
@@ -89,18 +91,21 @@ class JwtServiceTest {
 
             assertThat(claims.getSubject()).isEqualTo("alice");
             assertThat(claims.get("typ")).isEqualTo("access");
+            assertThat(claims.get("tv", Long.class)).isEqualTo(0L);
             assertThat(claims.get("roles")).isEqualTo(List.of("ROLE_USER"));
         }
 
         @Test
-        @DisplayName("refresh token carrega typ=refresh")
+        @DisplayName("refresh token carrega typ=refresh e tv")
         void refreshTokenClaims() {
-            final var token = jwtService.generateRefreshToken("alice");
+            final var user = enabledUser("alice");
+            final var token = jwtService.generateRefreshToken(user);
 
             final var claims = Jwts.parserBuilder().setSigningKey(SECRET_KEY).build()
                     .parseClaimsJws(token).getBody();
 
             assertThat(claims.get("typ")).isEqualTo("refresh");
+            assertThat(claims.get("tv", Long.class)).isEqualTo(0L);
             assertThat(claims.getSubject()).isEqualTo("alice");
         }
     }
@@ -114,7 +119,7 @@ class JwtServiceTest {
         void validAccessTokenAuthenticates() throws Exception {
             final var user = enabledUser("alice");
             when(userApiService.loadUserByUsername("alice")).thenReturn(user);
-            final var token = rawToken("access", "alice", 60_000);
+            final var token = rawToken("access", "alice", 60_000, 0L);
 
             runFilter(token);
 
@@ -122,6 +127,19 @@ class JwtServiceTest {
             assertThat(auth).isNotNull();
             assertThat(auth.getName()).isEqualTo("alice");
             assertThat(auth.getCredentials()).isNull();
+        }
+
+        @Test
+        @DisplayName("token com tokenVersion desatualizada (revogado) não autentica")
+        void revokedTokenVersionIsRejected() throws Exception {
+            final var user = enabledUser("alice");
+            user.setTokenVersion(1L); // logout/troca de senha já incrementou
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = rawToken("access", "alice", 60_000, 0L); // token emitido antes
+
+            runFilter(token);
+
+            assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         }
 
         @Test
@@ -135,7 +153,7 @@ class JwtServiceTest {
         @Test
         @DisplayName("refresh token usado como access token não autentica")
         void refreshTokenAsAccessTokenIsRejected() throws Exception {
-            final var refreshToken = rawToken("refresh", "alice", 60_000);
+            final var refreshToken = rawToken("refresh", "alice", 60_000, 0L);
 
             runFilter(refreshToken);
 
@@ -149,7 +167,7 @@ class JwtServiceTest {
             final var user = enabledUser("alice");
             user.setIsEnabled(false);
             when(userApiService.loadUserByUsername("alice")).thenReturn(user);
-            final var token = rawToken("access", "alice", 60_000);
+            final var token = rawToken("access", "alice", 60_000, 0L);
 
             runFilter(token);
 
@@ -194,17 +212,19 @@ class JwtServiceTest {
     class ValidateRefreshToken {
 
         @Test
-        @DisplayName("token de refresh válido retorna o subject")
-        void validRefreshTokenReturnsSubject() {
-            final var token = jwtService.generateRefreshToken("alice");
+        @DisplayName("token de refresh válido retorna o usuário")
+        void validRefreshTokenReturnsUser() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = jwtService.generateRefreshToken(user);
 
-            assertThat(jwtService.validateRefreshToken(token)).isEqualTo("alice");
+            assertThat(jwtService.validateRefreshToken(token).getUsername()).isEqualTo("alice");
         }
 
         @Test
         @DisplayName("token expirado lança InvalidRefreshTokenException")
         void expiredTokenThrows() {
-            final var expired = rawToken("refresh", "alice", -1_000);
+            final var expired = rawToken("refresh", "alice", -1_000, 0L);
 
             assertThatThrownBy(() -> jwtService.validateRefreshToken(expired))
                     .isInstanceOf(InvalidRefreshTokenException.class);
@@ -218,6 +238,19 @@ class JwtServiceTest {
             assertThatThrownBy(() -> jwtService.validateRefreshToken(accessToken))
                     .isInstanceOf(InvalidRefreshTokenException.class)
                     .hasMessageContaining("not a refresh token");
+        }
+
+        @Test
+        @DisplayName("refresh token com tokenVersion desatualizada (revogado) é rejeitado")
+        void revokedRefreshTokenIsRejected() {
+            final var user = enabledUser("alice");
+            final var token = jwtService.generateRefreshToken(user); // tv=0
+            user.setTokenVersion(1L); // logout aconteceu depois de emitido
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+
+            assertThatThrownBy(() -> jwtService.validateRefreshToken(token))
+                    .isInstanceOf(InvalidRefreshTokenException.class)
+                    .hasMessageContaining("revoked");
         }
 
         @Test

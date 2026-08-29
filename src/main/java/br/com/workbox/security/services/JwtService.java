@@ -2,9 +2,7 @@ package br.com.workbox.security.services;
 
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.OctetSequenceKey;
+import br.com.workbox.security.entities.UserApi;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -13,17 +11,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -33,10 +27,16 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 public class JwtService extends OncePerRequestFilter {
+
+    private static final String TOKEN_TYPE_CLAIM = "typ";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final String REFRESH_TOKEN_TYPE = "refresh";
+    private static final String TOKEN_VERSION_CLAIM = "tv";
 
     private final SecretKey secretKey;
     private final UserApiService userApiService;
@@ -60,27 +60,29 @@ public class JwtService extends OncePerRequestFilter {
                 .compact();
     }
 
-    private static final String TOKEN_TYPE_CLAIM = "typ";
-    private static final String ACCESS_TOKEN_TYPE = "access";
-    private static final String REFRESH_TOKEN_TYPE = "refresh";
-
-    public String generateToken(final UserDetails userDetails) {
+    public String generateToken(final UserApi user) {
         final var claims = new HashMap<String, Object>();
         claims.put(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE);
-        claims.put("roles", userDetails.getAuthorities().stream()
+        claims.put(TOKEN_VERSION_CLAIM, tokenVersionOf(user));
+        claims.put("roles", user.getAuthorities().stream()
                 .map(grantedAuthority -> {
                     String authority = grantedAuthority.getAuthority();
                     return authority.startsWith("ROLE_") ? authority : "ROLE_" + authority;
                 })
                 .toList());
         claims.put("scope", "read write");
-        return createToken(claims, userDetails.getUsername(), 1_000 * 60 * 15L);
+        return createToken(claims, user.getUsername(), 1_000 * 60 * 15L);
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(final UserApi user) {
         final var claims = new HashMap<String, Object>();
         claims.put(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE);
-        return createToken(claims, username, 1_000 * 60 * 60 * 24L);
+        claims.put(TOKEN_VERSION_CLAIM, tokenVersionOf(user));
+        return createToken(claims, user.getUsername(), 1_000 * 60 * 60 * 24L);
+    }
+
+    private long tokenVersionOf(final UserApi user) {
+        return Objects.requireNonNullElse(user.getTokenVersion(), 0L);
     }
 
     @Override
@@ -106,7 +108,12 @@ public class JwtService extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    public String validateRefreshToken(String refreshToken) {
+    /**
+     * Retorna o usuário dono do refresh token (já validado: tipo, expiração, versão de
+     * token contra o banco). Lança InvalidRefreshTokenException com mensagem genérica
+     * em qualquer caso de falha — não diferenciar motivo pro chamador.
+     */
+    public UserApi validateRefreshToken(final String refreshToken) {
         final var claims = parseRefreshTokenClaims(refreshToken);
         if (claims.getExpiration().before(new Date())) {
             throw new InvalidRefreshTokenException("Token expired");
@@ -114,7 +121,16 @@ public class JwtService extends OncePerRequestFilter {
         if (!REFRESH_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
             throw new InvalidRefreshTokenException("Token is not a refresh token");
         }
-        return claims.getSubject();
+        final UserApi user;
+        try {
+            user = (UserApi) userApiService.loadUserByUsername(claims.getSubject());
+        } catch (UsernameNotFoundException e) {
+            throw new InvalidRefreshTokenException("Invalid refresh token", e);
+        }
+        if (!Objects.equals(tokenVersionOf(user), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
+            throw new InvalidRefreshTokenException("Token has been revoked");
+        }
+        return user;
     }
 
     private io.jsonwebtoken.Claims parseRefreshTokenClaims(String refreshToken) {
@@ -125,18 +141,6 @@ public class JwtService extends OncePerRequestFilter {
         } catch (Exception e) {
             throw new InvalidRefreshTokenException("Invalid refresh token", e);
         }
-    }
-
-    @Bean
-    public JwtEncoder jwtEncoder() {
-        final var jwk = new OctetSequenceKey.Builder(secretKey).algorithm(JWSAlgorithm.HS256).build();
-        final var jwkSet = new JWKSet(jwk);
-        return new NimbusJwtEncoder((jwkSelector, context) -> jwkSelector.select(jwkSet));
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
     }
 
     @SuppressWarnings("unchecked")
@@ -150,8 +154,11 @@ public class JwtService extends OncePerRequestFilter {
             if (username == null) {
                 return null;
             }
-            final var userDetail = userApiService.loadUserByUsername(username);
+            final var userDetail = (UserApi) userApiService.loadUserByUsername(username);
             if (!isAccountUsable(userDetail)) {
+                return null;
+            }
+            if (!Objects.equals(tokenVersionOf(userDetail), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
                 return null;
             }
             final var roles = (List<String>) claims.get("roles");
@@ -162,6 +169,8 @@ public class JwtService extends OncePerRequestFilter {
             return new UsernamePasswordAuthenticationToken(username, null, authorities);
         } catch (JwtException e) {
             throw new InvalidTokenException("Invalid token or expired");
+        } catch (UsernameNotFoundException e) {
+            return null;
         }
     }
 

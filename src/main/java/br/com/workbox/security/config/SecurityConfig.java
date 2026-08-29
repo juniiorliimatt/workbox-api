@@ -1,8 +1,10 @@
 package br.com.workbox.security.config;
 
+import br.com.workbox.security.oauth2.OAuth2LoginSuccessHandler;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.UserApiService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -29,20 +31,24 @@ public class SecurityConfig {
 
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String ROLE_USER = "USER";
-    public static final String BAR = "/";
-    public static final String USER = "user";
+    private static final String API_USER = "/api/user/**";
+    private static final String API_ROLE = "/api/role/**";
 
     private final Environment env;
     private final JwtService jwtService;
-    private final JwtAuthenticationConverter jwtAuthenticationConverter;
     private final UserApiService userApiService;
+    private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
     @Autowired
-    public SecurityConfig(Environment env, JwtService jwtService, JwtAuthenticationConverter jwtAuthenticationConverter, UserApiService userApiService) {
+    public SecurityConfig(Environment env, JwtService jwtService,
+                           UserApiService userApiService, ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
         this.env = env;
         this.jwtService = jwtService;
-        this.jwtAuthenticationConverter = jwtAuthenticationConverter;
         this.userApiService = userApiService;
+        this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
     }
 
     @Bean
@@ -54,17 +60,35 @@ public class SecurityConfig {
 
         httpSecurity.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh",
+                        "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
-                .requestMatchers(HttpMethod.GET, BAR + USER).hasAnyRole(ROLE_ADMIN, ROLE_USER)
-                .requestMatchers(HttpMethod.POST, BAR + USER).hasRole(ROLE_ADMIN)
-                .requestMatchers(HttpMethod.PUT, BAR + USER).hasRole(ROLE_ADMIN)
-                .requestMatchers(HttpMethod.DELETE, BAR + USER + "/**").hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.GET, API_USER).hasAnyRole(ROLE_ADMIN, ROLE_USER)
+                .requestMatchers(HttpMethod.POST, API_USER).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.PUT, API_USER).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.DELETE, API_USER).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.GET, API_ROLE).hasAnyRole(ROLE_ADMIN, ROLE_USER)
+                .requestMatchers(HttpMethod.POST, API_ROLE).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.PUT, API_ROLE).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.DELETE, API_ROLE).hasRole(ROLE_ADMIN)
                 .anyRequest().authenticated()
         );
 
-        httpSecurity.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+        // Autenticação por Bearer JWT é 100% via JwtService (addFilterBefore abaixo) —
+        // sem oauth2ResourceServer().jwt() aqui de propósito. Os dois coexistindo já
+        // causou um bug real: o resource server nativo do Spring valida assinatura +
+        // expiração e autentica por conta própria, sem saber nada de tokenVersion —
+        // logout/troca de senha/reset não invalidavam o access token porque esse
+        // segundo caminho autenticava por trás do primeiro mesmo com o token revogado.
+
+        // Login social só ativa se houver ao menos um client registrado (ex.: GOOGLE_CLIENT_ID/
+        // GOOGLE_CLIENT_SECRET setados) — sem isso o bean nem existe, e chamar oauth2Login()
+        // sem nenhum client registrado quebraria a subida da aplicação.
+        if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+            httpSecurity.oauth2Login(oauth2 -> oauth2.successHandler(oAuth2LoginSuccessHandler));
+        }
 
         httpSecurity.userDetailsService(userApiService).exceptionHandling(exceptionHandling ->
                 exceptionHandling.authenticationEntryPoint(

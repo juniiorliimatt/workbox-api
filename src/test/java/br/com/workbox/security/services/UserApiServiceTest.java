@@ -10,11 +10,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.repositories.RoleRepository;
 import br.com.workbox.security.repositories.UserApiRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -59,10 +62,13 @@ class UserApiServiceTest {
                 .id(UUID.randomUUID())
                 .username(USERNAME)
                 .password(HASH)
+                .email("alice@example.com")
                 .isEnabled(true)
                 .isAccountNonExpired(true)
                 .isAccountNonLocked(true)
                 .isCredentialsNonExpired(true)
+                .tokenVersion(0L)
+                .failedLoginAttempts(0)
                 .roles(Set.of());
     }
 
@@ -92,78 +98,156 @@ class UserApiServiceTest {
     }
 
     @Nested
-    @DisplayName("validateCredentials")
-    class ValidateCredentials {
+    @DisplayName("attemptLogin")
+    class AttemptLogin {
 
         @Test
-        @DisplayName("true quando usuário habilitado e senha confere")
-        void trueForEnabledUserWithMatchingPassword() {
-            final var user = aUser().build();
+        @DisplayName("sucesso quando usuário habilitado e senha confere; zera o contador de falhas")
+        void successForEnabledUserWithMatchingPassword() {
+            final var user = aUser().failedLoginAttempts(2).build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches(RAW_PASSWORD, HASH)).thenReturn(true);
 
-            assertThat(service.validateCredentials(USERNAME, RAW_PASSWORD)).isTrue();
+            final var result = service.attemptLogin(USERNAME, RAW_PASSWORD);
+
+            assertThat(result.success()).isTrue();
+            assertThat(result.user()).isSameAs(user);
+            assertThat(user.getFailedLoginAttempts()).isZero();
         }
 
         @Test
-        @DisplayName("false quando a senha não confere")
-        void falseForWrongPassword() {
+        @DisplayName("falha com motivo invalid_password quando a senha não confere, e incrementa o contador")
+        void failsForWrongPasswordAndIncrementsCounter() {
             final var user = aUser().build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("senha-errada", HASH)).thenReturn(false);
 
-            assertThat(service.validateCredentials(USERNAME, "senha-errada")).isFalse();
+            final var result = service.attemptLogin(USERNAME, "senha-errada");
+
+            assertThat(result.success()).isFalse();
+            assertThat(result.failureReason()).isEqualTo("invalid_password");
+            assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("false quando o usuário não existe — sem lançar exceção (evita enumeração)")
-        void falseForUnknownUserWithoutThrowing() {
+        @DisplayName("bloqueia a conta por 15 minutos ao atingir o limite de tentativas falhas")
+        void locksAccountAfterMaxFailedAttempts() {
+            final var user = aUser().failedLoginAttempts(UserApiService.MAX_FAILED_ATTEMPTS - 1).build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("senha-errada", HASH)).thenReturn(false);
+
+            service.attemptLogin(USERNAME, "senha-errada");
+
+            assertThat(user.getFailedLoginAttempts()).isZero();
+            assertThat(user.getLockedUntil()).isAfter(LocalDateTime.now().plusMinutes(UserApiService.LOCK_DURATION_MINUTES - 1));
+            assertThat(user.isAccountNonLocked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("falha com motivo unknown_user quando o usuário não existe — sem lançar exceção (evita enumeração)")
+        void failsForUnknownUserWithoutThrowing() {
             when(userApiRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
-            assertThat(service.validateCredentials("ghost", "qualquer")).isFalse();
+            final var result = service.attemptLogin("ghost", "qualquer");
+
+            assertThat(result.success()).isFalse();
+            assertThat(result.failureReason()).isEqualTo("unknown_user");
         }
 
         @Test
-        @DisplayName("false quando a conta está desabilitada, mesmo com senha correta")
-        void falseForDisabledAccount() {
+        @DisplayName("falha quando a conta está desabilitada, mesmo com senha correta — sem checar a senha")
+        void failsForDisabledAccountWithoutCheckingPassword() {
             final var user = aUser().isEnabled(false).build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
 
-            assertThat(service.validateCredentials(USERNAME, RAW_PASSWORD)).isFalse();
+            final var result = service.attemptLogin(USERNAME, RAW_PASSWORD);
+
+            assertThat(result.success()).isFalse();
+            assertThat(result.failureReason()).isEqualTo("account_not_usable");
             verify(passwordEncoder, never()).matches(any(), any());
         }
 
         @Test
-        @DisplayName("false quando a conta está bloqueada (isAccountNonLocked=false)")
-        void falseForLockedAccount() {
+        @DisplayName("falha quando a conta está bloqueada (isAccountNonLocked=false)")
+        void failsForLockedAccount() {
             final var user = aUser().isAccountNonLocked(false).build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
 
-            assertThat(service.validateCredentials(USERNAME, RAW_PASSWORD)).isFalse();
-            verify(passwordEncoder, never()).matches(any(), any());
+            assertThat(service.attemptLogin(USERNAME, RAW_PASSWORD).success()).isFalse();
         }
 
         @Test
-        @DisplayName("false quando a conta está expirada (isAccountNonExpired=false)")
-        void falseForExpiredAccount() {
+        @DisplayName("falha quando a conta está com lockedUntil no futuro, mesmo com isAccountNonLocked=true")
+        void failsWhileTemporarilyLocked() {
+            final var user = aUser().lockedUntil(LocalDateTime.now().plusMinutes(5)).build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+
+            assertThat(service.attemptLogin(USERNAME, RAW_PASSWORD).success()).isFalse();
+        }
+
+        @Test
+        @DisplayName("falha quando a conta está expirada (isAccountNonExpired=false)")
+        void failsForExpiredAccount() {
             final var user = aUser().isAccountNonExpired(false).build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
 
-            assertThat(service.validateCredentials(USERNAME, RAW_PASSWORD)).isFalse();
+            assertThat(service.attemptLogin(USERNAME, RAW_PASSWORD).success()).isFalse();
         }
 
         @Test
-        @DisplayName("false quando as credenciais estão expiradas (isCredentialsNonExpired=false)")
-        void falseForExpiredCredentials() {
+        @DisplayName("falha quando as credenciais estão expiradas (isCredentialsNonExpired=false)")
+        void failsForExpiredCredentials() {
             final var user = aUser().isCredentialsNonExpired(false).build();
             when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
 
-            assertThat(service.validateCredentials(USERNAME, RAW_PASSWORD)).isFalse();
+            assertThat(service.attemptLogin(USERNAME, RAW_PASSWORD).success()).isFalse();
         }
     }
 
     @Nested
-    @DisplayName("findAll / findById")
+    @DisplayName("logout / changePassword")
+    class LogoutAndChangePassword {
+
+        @Test
+        @DisplayName("logout incrementa tokenVersion")
+        void logoutBumpsTokenVersion() {
+            final var user = aUser().build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+
+            service.logout(USERNAME);
+
+            assertThat(user.getTokenVersion()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("changePassword troca o hash e incrementa tokenVersion quando a senha atual confere")
+        void changePasswordUpdatesHashAndBumpsVersion() {
+            final var user = aUser().build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches(RAW_PASSWORD, HASH)).thenReturn(true);
+            when(passwordEncoder.encode("nova-senha-forte")).thenReturn("novo-hash");
+
+            service.changePassword(USERNAME, new ChangePasswordDTO(RAW_PASSWORD, "nova-senha-forte"));
+
+            assertThat(user.getPassword()).isEqualTo("novo-hash");
+            assertThat(user.getTokenVersion()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("changePassword rejeita quando a senha atual não confere")
+        void changePasswordRejectsWrongCurrentPassword() {
+            final var user = aUser().build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("errada", HASH)).thenReturn(false);
+
+            assertThatThrownBy(() -> service.changePassword(USERNAME, new ChangePasswordDTO("errada", "nova-senha-forte")))
+                    .isInstanceOf(br.com.workbox.exceptions.LoginInvalidException.class);
+            verify(userApiRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("findAll / findById / me")
     class Queries {
 
         @Test
@@ -200,6 +284,18 @@ class UserApiServiceTest {
             assertThat(result.getUsername()).isEqualTo(USERNAME);
             assertThat(result.isEnabled()).isTrue();
         }
+
+        @Test
+        @DisplayName("me retorna o DTO do usuário autenticado")
+        void meReturnsDto() {
+            final var user = aUser().build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+
+            final var result = service.me(USERNAME);
+
+            assertThat(result.getUsername()).isEqualTo(USERNAME);
+            assertThat(result.getEmail()).isEqualTo("alice@example.com");
+        }
     }
 
     @Nested
@@ -210,7 +306,7 @@ class UserApiServiceTest {
         @DisplayName("save resolve as roles, faz hash da senha e persiste")
         void saveHashesPasswordAndResolvesRoles() {
             final var role = Role.builder().id(1L).authority("USER").build();
-            final var dto = new UserApiInsertOrUpdateDTO(null, USERNAME, RAW_PASSWORD, true, Set.of(role));
+            final var dto = new UserApiInsertOrUpdateDTO(null, USERNAME, RAW_PASSWORD, "alice@example.com", true, Set.of(role));
             when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
             when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(HASH);
             when(userApiRepository.save(any(UserApi.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -225,7 +321,7 @@ class UserApiServiceTest {
         @DisplayName("save lança ResourceNotFoundException quando uma role não existe")
         void saveThrowsWhenRoleMissing() {
             final var role = Role.builder().id(99L).authority("GHOST").build();
-            final var dto = new UserApiInsertOrUpdateDTO(null, USERNAME, RAW_PASSWORD, true, Set.of(role));
+            final var dto = new UserApiInsertOrUpdateDTO(null, USERNAME, RAW_PASSWORD, "alice@example.com", true, Set.of(role));
             when(roleRepository.findById(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.save(dto))
@@ -237,7 +333,7 @@ class UserApiServiceTest {
         @DisplayName("update aplica as mudanças e re-hasheia a senha")
         void updateRehashesPassword() {
             final var user = aUser().build();
-            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "bob12", "nova-senha", false, Set.of());
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "bob12", "nova-senha", "bob@example.com", false, Set.of());
             when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
             when(passwordEncoder.encode("nova-senha")).thenReturn("novo-hash");
             when(userApiRepository.save(user)).thenReturn(user);
@@ -246,6 +342,7 @@ class UserApiServiceTest {
 
             assertThat(user.getUsername()).isEqualTo("bob12");
             assertThat(user.getPassword()).isEqualTo("novo-hash");
+            assertThat(user.getEmail()).isEqualTo("bob@example.com");
             assertThat(user.getIsEnabled()).isFalse();
             assertThat(result.isEnabled()).isFalse();
         }
@@ -258,18 +355,21 @@ class UserApiServiceTest {
 
             assertThatThrownBy(() -> service.delete(id))
                     .isInstanceOf(ResourceNotFoundException.class);
-            verify(userApiRepository, never()).deleteById(any());
+            verify(userApiRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("delete remove pelo id quando o usuário existe")
-        void deleteRemovesExistingUser() {
+        @DisplayName("delete é lógico — seta deletedAt em vez de apagar a linha")
+        void deleteIsLogical() {
             final var user = aUser().build();
             when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
             service.delete(user.getId());
 
-            verify(userApiRepository, times(1)).deleteById(eq(user.getId()));
+            final var captor = ArgumentCaptor.forClass(UserApi.class);
+            verify(userApiRepository, times(1)).save(captor.capture());
+            assertThat(captor.getValue().getDeletedAt()).isNotNull();
+            verify(userApiRepository, never()).deleteById(eq(user.getId()));
         }
 
         private UserApi argThatPasswordIsHashed() {

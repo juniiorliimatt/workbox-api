@@ -65,7 +65,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName(value = "Get UserById")
     void testGetUserApiById() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getIsEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getEmail(), userApi.getIsEnabled());
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
 
         mockMvc.perform(get("/api/user/" + this.id))

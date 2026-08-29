@@ -7,6 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import java.io.Serializable;
@@ -22,6 +24,9 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -32,6 +37,8 @@ import org.springframework.security.core.GrantedAuthority;
 @AllArgsConstructor
 @Builder
 @EntityListeners(AuditingEntityListener.class)
+@SQLRestriction("deleted_at IS NULL")
+@Audited
 public class Role implements Serializable, GrantedAuthority {
 
     @Id
@@ -42,6 +49,7 @@ public class Role implements Serializable, GrantedAuthority {
     @NotBlank(message = "Field authority is required")
     private String authority;
 
+    @NotAudited
     @ManyToMany(mappedBy = "roles")
     private Set<UserApi> users = new HashSet<>();
 
@@ -59,6 +67,9 @@ public class Role implements Serializable, GrantedAuthority {
     @LastModifiedBy
     private String updatedBy;
 
+    @Setter
+    private LocalDateTime deletedAt;
+
     public Role(Long id, String authority) {
         this.id = id;
         this.authority = authority;
@@ -66,5 +77,15 @@ public class Role implements Serializable, GrantedAuthority {
 
     public void setAuthority(String authority) {
         this.authority = authority != null ? authority.toUpperCase() : null;
+    }
+
+    // setAuthority não é chamado quando a entidade nasce via @Builder (Lombok seta o
+    // campo direto) — normaliza aqui também pra cobrir esse caminho.
+    @PrePersist
+    @PreUpdate
+    private void normalizeAuthority() {
+        if (authority != null) {
+            authority = authority.toUpperCase();
+        }
     }
 }

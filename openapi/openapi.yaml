@@ -14,6 +14,20 @@ servers:
 security:
 - bearer-jwt: []
 paths:
+  /api/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+      tags:
+      - auth-controller
   /api/auth/login:
     post:
       operationId: login
@@ -31,6 +45,40 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+          description: OK
+      tags:
+      - auth-controller
+  /api/auth/logout:
+    post:
+      operationId: logout
+      responses:
+        "200":
+          description: OK
+      tags:
+      - auth-controller
+  /api/auth/me:
+    get:
+      operationId: me
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserApiDTO"
+          description: OK
+      tags:
+      - auth-controller
+  /api/auth/password:
+    put:
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordDTO"
+        required: true
+      responses:
+        "200":
           description: OK
       tags:
       - auth-controller
@@ -54,9 +102,111 @@ paths:
           description: OK
       tags:
       - auth-controller
+  /api/auth/reset-password:
+    post:
+      operationId: resetPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+      tags:
+      - auth-controller
+  /api/role:
+    get:
+      operationId: findAll
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleDTO"
+          description: OK
+      tags:
+      - role-controller
+    post:
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleDTO"
+        required: true
+      responses:
+        "201":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleDTO"
+          description: Created
+      tags:
+      - role-controller
+  /api/role/{id}:
+    delete:
+      operationId: delete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+      tags:
+      - role-controller
+    get:
+      operationId: findById
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleDTO"
+          description: OK
+      tags:
+      - role-controller
+    put:
+      operationId: update_1
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleDTO"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleDTO"
+          description: OK
+      tags:
+      - role-controller
   /api/user/find-all:
     get:
-      operationId: findAll_1
+      operationId: findAll_2
       parameters:
       - in: query
         name: User API
@@ -73,7 +223,7 @@ paths:
       - user-api-controller
   /api/user/pageable:
     get:
-      operationId: findAll
+      operationId: findAll_1
       parameters:
       - in: query
         name: pageable
@@ -141,7 +291,7 @@ paths:
       - user-api-controller
   /api/user/{id}:
     delete:
-      operationId: delete
+      operationId: delete_1
       parameters:
       - in: path
         name: id
@@ -155,7 +305,7 @@ paths:
       tags:
       - user-api-controller
     get:
-      operationId: findById
+      operationId: findById_1
       parameters:
       - in: path
         name: id
@@ -178,6 +328,19 @@ paths:
       - user-api-controller
 components:
   schemas:
+    ChangePasswordDTO:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+        newPassword:
+          type: string
+          maxLength: 100
+          minLength: 8
+      required:
+      - currentPassword
+      - newPassword
     CollectionModelUserApiDTO:
       type: object
       properties:
@@ -195,6 +358,8 @@ components:
       properties:
         _links:
           $ref: "#/components/schemas/Links"
+        email:
+          type: string
         enabled:
           type: boolean
         id:
@@ -202,6 +367,15 @@ components:
           format: uuid
         username:
           type: string
+    ForgotPasswordDTO:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
     GrantedAuthority:
       type: object
       properties:
@@ -307,6 +481,19 @@ components:
           $ref: "#/components/schemas/SortObject"
         unpaged:
           type: boolean
+    ResetPasswordDTO:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          maxLength: 100
+          minLength: 8
+        token:
+          type: string
+          minLength: 1
+      required:
+      - newPassword
+      - token
     Role:
       type: object
       properties:
@@ -318,6 +505,9 @@ components:
           format: date-time
         createdBy:
           type: string
+        deletedAt:
+          type: string
+          format: date-time
         id:
           type: integer
           format: int64
@@ -331,6 +521,17 @@ components:
           items:
             $ref: "#/components/schemas/UserApi"
           uniqueItems: true
+      required:
+      - authority
+    RoleDTO:
+      type: object
+      properties:
+        authority:
+          type: string
+          minLength: 1
+        id:
+          type: integer
+          format: int64
       required:
       - authority
     SortObject:
@@ -360,8 +561,17 @@ components:
           type: string
         credentialsNonExpired:
           type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+          format: email
         enabled:
           type: boolean
+        failedLoginAttempts:
+          type: integer
+          format: int32
         id:
           type: string
           format: uuid
@@ -373,6 +583,9 @@ components:
           type: boolean
         isEnabled:
           type: boolean
+        lockedUntil:
+          type: string
+          format: date-time
         password:
           type: string
           writeOnly: true
@@ -381,6 +594,9 @@ components:
           items:
             $ref: "#/components/schemas/Role"
           uniqueItems: true
+        tokenVersion:
+          type: integer
+          format: int64
         updatedAt:
           type: string
           format: date-time
@@ -397,6 +613,8 @@ components:
       properties:
         _links:
           $ref: "#/components/schemas/Links"
+        email:
+          type: string
         enabled:
           type: boolean
         id:
@@ -407,6 +625,8 @@ components:
     UserApiInsertOrUpdateDTO:
       type: object
       properties:
+        email:
+          type: string
         id:
           type: string
           format: uuid

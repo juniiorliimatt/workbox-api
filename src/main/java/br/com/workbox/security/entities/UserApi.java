@@ -15,8 +15,12 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
@@ -45,14 +49,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Table(name = "users_api")
 @Builder
 @EntityListeners(AuditingEntityListener.class)
+@SQLRestriction("deleted_at IS NULL")
+@Audited
 public class UserApi implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    // Unicidade real é um índice único parcial (WHERE deleted_at IS NULL, ver
+    // changelog v0.0.2) — exclusão é lógica, então UNIQUE bruto na coluna impediria
+    // reusar o username de um usuário deletado. Não declarar unique=true aqui.
     @Size(min = 5, max = 50)
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     @NotBlank(message = "Username is mandatory")
     private String username;
 
@@ -62,6 +71,11 @@ public class UserApi implements UserDetails {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
+    // Mesma razão do username acima: unicidade é índice parcial, não coluna.
+    @Email(message = "Email must be valid")
+    private String email;
+
+    @NotAudited
     @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -76,6 +90,18 @@ public class UserApi implements UserDetails {
     private Boolean isAccountNonLocked;
 
     private Boolean isCredentialsNonExpired;
+
+    @Column(nullable = false)
+    private Long tokenVersion;
+
+    @Column(nullable = false)
+    private Integer failedLoginAttempts;
+
+    // Lockout automático por brute-force: NULL = não bloqueado, no futuro = bloqueado
+    // até esse instante. Combinado com isAccountNonLocked em isAccountNonLocked().
+    private LocalDateTime lockedUntil;
+
+    private LocalDateTime deletedAt;
 
     @CreatedDate
     @Column(updatable = false)
@@ -94,6 +120,7 @@ public class UserApi implements UserDetails {
     public UserApi(UserApiInsertOrUpdateDTO dto) {
         this.username = dto.username();
         this.password = dto.password();
+        this.email = dto.email();
         this.isEnabled = dto.isEnabled();
     }
 
@@ -110,6 +137,8 @@ public class UserApi implements UserDetails {
         this.isAccountNonLocked = Objects.isNull(isAccountNonLocked) ? Boolean.TRUE : this.isAccountNonLocked;
         this.isCredentialsNonExpired = Objects.isNull(isCredentialsNonExpired) ? Boolean.TRUE : this.isCredentialsNonExpired;
         this.isEnabled = Objects.isNull(isEnabled) ? Boolean.TRUE : this.isEnabled;
+        this.tokenVersion = Objects.isNull(tokenVersion) ? 0L : this.tokenVersion;
+        this.failedLoginAttempts = Objects.isNull(failedLoginAttempts) ? 0 : this.failedLoginAttempts;
     }
 
     @Override
@@ -124,7 +153,7 @@ public class UserApi implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return isAccountNonLocked;
+        return isAccountNonLocked && (lockedUntil == null || lockedUntil.isBefore(LocalDateTime.now()));
     }
 
     @Override
