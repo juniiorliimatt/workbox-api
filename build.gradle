@@ -51,6 +51,15 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        // cucumber-junit-platform-engine 7.34.7 requer junit-platform-engine >= 1.14,
+        // acima do que o BOM do Spring Boot 3.5.16 gerencia (1.12.2) — sobrescreve aqui.
+        mavenBom "org.junit:junit-bom:5.14.2"
+        mavenBom "io.cucumber:cucumber-bom:7.34.7"
+    }
+}
+
 sonar {
     properties {
         property "sonar.projectKey", "oojuniin_apiv2"
@@ -98,5 +107,9 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'io.cucumber:cucumber-java'
+    testImplementation 'io.cucumber:cucumber-spring'
+    testImplementation 'io.cucumber:cucumber-junit-platform-engine'
+    testImplementation 'org.junit.platform:junit-platform-suite'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
