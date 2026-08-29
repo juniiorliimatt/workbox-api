@@ -43,7 +43,9 @@ sonarcloud-check:
     key: "${CI_JOB_NAME}"
     paths:
       - .sonar/cache
-  script: gradle sonar
+  script:
+    - echo "DEBUG SONAR_TOKEN length=${#SONAR_TOKEN} SONAR_HOST_URL=[${SONAR_HOST_URL}] CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME} CI_COMMIT_REF_PROTECTED=${CI_COMMIT_REF_PROTECTED}"
+    - gradle sonar
   only:
     - merge_requests
     - main
