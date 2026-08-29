@@ -60,8 +60,13 @@ public class JwtService extends OncePerRequestFilter {
                 .compact();
     }
 
+    private static final String TOKEN_TYPE_CLAIM = "typ";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final String REFRESH_TOKEN_TYPE = "refresh";
+
     public String generateToken(final UserDetails userDetails) {
         final var claims = new HashMap<String, Object>();
+        claims.put(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE);
         claims.put("roles", userDetails.getAuthorities().stream()
                 .map(grantedAuthority -> {
                     String authority = grantedAuthority.getAuthority();
@@ -74,6 +79,7 @@ public class JwtService extends OncePerRequestFilter {
 
     public String generateRefreshToken(String username) {
         final var claims = new HashMap<String, Object>();
+        claims.put(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE);
         return createToken(claims, username, 1_000 * 60 * 60 * 24L);
     }
 
@@ -91,12 +97,21 @@ public class JwtService extends OncePerRequestFilter {
     }
 
     public String validateRefreshToken(String refreshToken) {
+        final var claims = parseRefreshTokenClaims(refreshToken);
+        if (claims.getExpiration().before(new Date())) {
+            throw new InvalidRefreshTokenException("Token expired");
+        }
+        if (!REFRESH_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+            throw new InvalidRefreshTokenException("Token is not a refresh token");
+        }
+        return claims.getSubject();
+    }
+
+    private io.jsonwebtoken.Claims parseRefreshTokenClaims(String refreshToken) {
         try {
-            final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(refreshToken).getBody();
-            if (claims.getExpiration().before(new Date())) {
-                throw new InvalidRefreshTokenException("Token expired");
-            }
-            return claims.getSubject();
+            return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(refreshToken).getBody();
+        } catch (InvalidRefreshTokenException e) {
+            throw e;
         } catch (Exception e) {
             throw new InvalidRefreshTokenException("Invalid refresh token", e);
         }
@@ -118,19 +133,32 @@ public class JwtService extends OncePerRequestFilter {
     private UsernamePasswordAuthenticationToken getAuthentication(String token) {
         try {
             final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
+            if (!ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+                return null;
+            }
             String username = claims.getSubject();
+            if (username == null) {
+                return null;
+            }
             final var userDetail = userApiService.loadUserByUsername(username);
+            if (!isAccountUsable(userDetail)) {
+                return null;
+            }
             final var roles = (List<String>) claims.get("roles");
             List<GrantedAuthority> authorities = roles.stream()
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            if (username != null) {
-                return new UsernamePasswordAuthenticationToken(username, userDetail.getPassword(), authorities);
-            }
-            return null;
+            return new UsernamePasswordAuthenticationToken(username, null, authorities);
         } catch (JwtException e) {
             throw new InvalidTokenException("Invalid token or expired");
         }
+    }
+
+    private boolean isAccountUsable(UserDetails userDetails) {
+        return userDetails.isEnabled()
+                && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired()
+                && userDetails.isCredentialsNonExpired();
     }
 }

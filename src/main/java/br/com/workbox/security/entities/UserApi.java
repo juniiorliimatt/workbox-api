@@ -106,7 +106,7 @@ public class UserApi implements UserDetails {
 
     @PrePersist
     public void prePersist() {
-        this.isAccountNonExpired = Objects.isNull(isAccountNonExpired) ? Boolean.TRUE : this.isCredentialsNonExpired;
+        this.isAccountNonExpired = Objects.isNull(isAccountNonExpired) ? Boolean.TRUE : this.isAccountNonExpired;
         this.isAccountNonLocked = Objects.isNull(isAccountNonLocked) ? Boolean.TRUE : this.isAccountNonLocked;
         this.isCredentialsNonExpired = Objects.isNull(isCredentialsNonExpired) ? Boolean.TRUE : this.isCredentialsNonExpired;
         this.isEnabled = Objects.isNull(isEnabled) ? Boolean.TRUE : this.isEnabled;
@@ -115,5 +115,20 @@ public class UserApi implements UserDetails {
     @Override
     public boolean isEnabled() {
         return isEnabled;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return isAccountNonExpired;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return isAccountNonLocked;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return isCredentialsNonExpired;
     }
 }

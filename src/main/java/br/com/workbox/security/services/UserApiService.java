@@ -12,8 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class UserApiService implements UserDetailsService {
@@ -46,16 +43,8 @@ public class UserApiService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
         logger.info("load by username");
-        var user = userApiRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
-        List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getAuthority()))
-                .collect(Collectors.toList());
-
-        return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                authorities
-        );
+        return userApiRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -113,10 +102,23 @@ public class UserApiService implements UserDetailsService {
         userApiRepository.deleteById(user.getId());
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public boolean validateCredentials(final String username, final String password) {
         logger.info("validate credentials");
-        final var userApiOptional = loadUserByUsername(username);
-        return passwordEncoder.matches(password, userApiOptional.getPassword());
+        try {
+            final var userDetails = loadUserByUsername(username);
+            return isAccountUsable(userDetails) && passwordEncoder.matches(password, userDetails.getPassword());
+        } catch (UsernameNotFoundException e) {
+            // Não diferenciar "usuário inexistente" de "senha incorreta"/"conta desabilitada"
+            // na resposta (evita enumeração de usuários via /api/auth/login).
+            return false;
+        }
+    }
+
+    private boolean isAccountUsable(final UserDetails userDetails) {
+        return userDetails.isEnabled()
+                && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired()
+                && userDetails.isCredentialsNonExpired();
     }
 }

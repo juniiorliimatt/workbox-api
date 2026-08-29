@@ -9,6 +9,8 @@ import br.com.workbox.exceptions.models.FieldError;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import java.util.List;
 @ControllerAdvice
 public class RestExceptionHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(RestExceptionHandler.class);
     private static final HttpStatus BAD_REQUEST = HttpStatus.BAD_REQUEST;
     private static final HttpStatus NOT_FOUND = HttpStatus.NOT_FOUND;
 
@@ -124,12 +127,14 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(DatabaseException.class)
     public ResponseEntity<ErrorResponse> handleDatabaseException(final DatabaseException exception, final HttpServletRequest request) {
-        return getErrorResponseEntity(request, exception.getMessage(), exception.getClass().getSimpleName());
+        logger.error("Database error on {}", request.getRequestURI(), exception);
+        return getErrorResponseEntity(request, "Database error", exception.getClass().getSimpleName());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
-        return getErrorResponseEntity(request, exception.getMessage(), exception.getClass().getSimpleName());
+        logger.error("Data integrity violation on {}", request.getRequestURI(), exception);
+        return getErrorResponseEntity(request, "Data integrity violation", exception.getClass().getSimpleName());
     }
 
     @ExceptionHandler(LoginInvalidException.class)
