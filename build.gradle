@@ -65,6 +65,7 @@ sonar {
         property "sonar.projectKey", "sonar-group-oojuniiin_workbox-api"
         property "sonar.organization", "sonar-group-oojuniiin"
         property "sonar.gradle.skipCompile", "true"
+        property "sonar.qualitygate.wait", "true"
     }
 }
 
