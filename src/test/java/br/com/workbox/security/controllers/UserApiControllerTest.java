@@ -1,12 +1,16 @@
 package br.com.workbox.security.controllers;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.workbox.security.dto.UserApiDTO;
+import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.services.RefreshTokenService;
@@ -14,6 +18,7 @@ import br.com.workbox.security.services.UserApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,5 +81,23 @@ class UserApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/hal+json"))
                 .andExpect(jsonPath("$.username").value(USERNAME));
+    }
+
+    @Test
+    @DisplayName(value = "Save user — Location header aponta pro path real do recurso")
+    void testSaveUserApi() throws Exception {
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getEmail(), userApi.getIsEnabled());
+        // Role sem o back-reference `users` — só pra não estourar em recursão infinita na
+        // serialização JSON do corpo da requisição (Role não tem @JsonIgnore/@JsonBackReference
+        // em `users`, e UserApi.roles -> Role.users -> UserApi de novo).
+        final var roleForRequest = Role.builder().id(1L).authority("TEST").build();
+        final var insertDto = new UserApiInsertOrUpdateDTO(null, USERNAME, PASSWORD, null, true, Set.of(roleForRequest));
+        when(userApiService.save(any(UserApiInsertOrUpdateDTO.class))).thenReturn(userApiDto);
+
+        mockMvc.perform(post("/api/v1/user/save")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(insertDto)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/api/v1/user/" + this.id)));
     }
 }

@@ -301,4 +301,69 @@ class JwtServiceTest {
                     .isInstanceOf(InvalidRefreshTokenException.class);
         }
     }
+
+    @Nested
+    @DisplayName("issueMfaChallengeToken / validateMfaChallengeToken")
+    class MfaChallengeToken {
+
+        @Test
+        @DisplayName("token emitido é aceito e devolve o usuário dono")
+        void issueAndValidateRoundTrip() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+
+            final var token = jwtService.issueMfaChallengeToken(user);
+
+            assertThat(jwtService.validateMfaChallengeToken(token).getUsername()).isEqualTo("alice");
+        }
+
+        @Test
+        @DisplayName("token expirado lança InvalidTokenException")
+        void expiredTokenThrows() {
+            final var expired = rawToken("mfa", "alice", -1_000, 0L);
+
+            assertThatThrownBy(() -> jwtService.validateMfaChallengeToken(expired))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class);
+        }
+
+        @Test
+        @DisplayName("access token apresentado como desafio MFA é rejeitado")
+        void accessTokenRejected() {
+            final var accessToken = jwtService.generateToken(enabledUser("alice"));
+
+            assertThatThrownBy(() -> jwtService.validateMfaChallengeToken(accessToken))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class)
+                    .hasMessageContaining("Not an MFA challenge token");
+        }
+
+        @Test
+        @DisplayName("usuário do token não existe mais lança InvalidTokenException")
+        void unknownUserThrows() {
+            final var token = rawToken("mfa", "ghost", 60_000, 0L);
+            when(userApiService.loadUserByUsername("ghost"))
+                    .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("gone"));
+
+            assertThatThrownBy(() -> jwtService.validateMfaChallengeToken(token))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class);
+        }
+
+        @Test
+        @DisplayName("tokenVersion desatualizada (revogado via logout) é rejeitada")
+        void revokedTokenVersionRejected() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = jwtService.issueMfaChallengeToken(user); // tv=0
+            user.setTokenVersion(1L);
+
+            assertThatThrownBy(() -> jwtService.validateMfaChallengeToken(token))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class);
+        }
+
+        @Test
+        @DisplayName("token com assinatura inválida lança InvalidTokenException")
+        void garbageTokenThrows() {
+            assertThatThrownBy(() -> jwtService.validateMfaChallengeToken("nao-e-um-jwt"))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class);
+        }
+    }
 }
