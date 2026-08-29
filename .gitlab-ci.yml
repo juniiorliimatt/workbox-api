@@ -47,7 +47,7 @@ sonarcloud-check:
   only:
     - merge_requests
     - main
-    - develop
+    - v0.0.2
 
 after_script:
   - echo “End CI”
