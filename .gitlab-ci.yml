@@ -5,6 +5,16 @@ stages:
   - contract
   - build
 
+# docker:dind — RealPostgresSchemaIT (Testcontainers) precisa de um daemon Docker
+# acessível; a Testcontainers-java fala com a Docker Remote API via DOCKER_HOST
+# diretamente (não invoca o binário `docker`), então nada precisa ser instalado na
+# imagem além dessa env var. Vale pra qualquer job cuja task dependa de `test`
+# (test, build e sonarcloud-check — este último via `tasks.named('sonar')
+# { dependsOn(test) }` no build.gradle).
+default:
+  services:
+    - docker:dind
+
 test:
   stage: test
   script:
@@ -36,6 +46,9 @@ build:
 variables:
   SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
   GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  TESTCONTAINERS_RYUK_DISABLED: "true"  # container de limpeza do Testcontainers costuma travar em runners restritos
 
 sonarcloud-check:
   cache:
