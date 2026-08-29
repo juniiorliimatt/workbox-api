@@ -85,7 +85,17 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `PUT /api/v1/auth/password` | Bearer | Troca de senha, exige a senha atual |
 | `POST /api/v1/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único; rate limit por e-mail |
 | `POST /api/v1/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
+| `POST /api/v1/auth/mfa/enroll` | Bearer | Gera segredo TOTP novo (não habilita MFA ainda) |
+| `POST /api/v1/auth/mfa/verify` | Bearer | Confirma o primeiro código TOTP e habilita MFA na conta |
+| `POST /api/v1/auth/mfa/disable` | Bearer | Desabilita MFA, exige um código TOTP válido |
+| `POST /api/v1/auth/mfa/login` | público | 2ª etapa do login quando a conta tem MFA: troca `mfa_token` (5min) + código TOTP por access+refresh |
 | `GET/POST/PUT/DELETE /api/v1/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
+
+Conta com MFA habilitado: `POST /auth/login` responde `200` com `{"mfa_required": true, "mfa_token": "..."}`
+em vez dos tokens — o client chama `POST /auth/mfa/login` com esse `mfa_token` + o código de
+6 dígitos do app autenticador pra receber `access_token`/`refresh_token`. Segredo TOTP fica
+em texto plano no banco (`users_api.mfa_secret`) por simplicidade de projeto de estudo — um
+ambiente real cifraria isso em repouso.
 
 **Login social** (Google) fica inativo até `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID`/`_CLIENT_SECRET`
 serem setados como variável de ambiente — sem isso, nem o bean existe, zero impacto na

@@ -128,7 +128,11 @@ public class AuthenticationSteps {
             return;
         }
         final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
-        context.setAccessToken(json.get("access_token").asText());
+        // Login com MFA habilitado responde 200 sem access_token (mfa_required + mfa_token
+        // em vez disso) — nada a capturar até a segunda etapa em MfaSteps.
+        if (json.has("access_token")) {
+            context.setAccessToken(json.get("access_token").asText());
+        }
     }
 
     private void criarUsuario(String username, String rawPassword, boolean enabled) {

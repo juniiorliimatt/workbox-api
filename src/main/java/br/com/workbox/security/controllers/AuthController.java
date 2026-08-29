@@ -2,12 +2,16 @@ package br.com.workbox.security.controllers;
 
 import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.ForgotPasswordDTO;
+import br.com.workbox.security.dto.MfaCodeDTO;
+import br.com.workbox.security.dto.MfaLoginDTO;
 import br.com.workbox.security.dto.ResetPasswordDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
+import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.LoginAuditService;
 import br.com.workbox.security.services.LoginRateLimiter;
+import br.com.workbox.security.services.MfaService;
 import br.com.workbox.security.services.PasswordResetService;
 import br.com.workbox.security.services.UserApiService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,17 +34,20 @@ public class AuthController {
     private final LoginAuditService loginAuditService;
     private final LoginRateLimiter loginRateLimiter;
     private final PasswordResetService passwordResetService;
+    private final MfaService mfaService;
 
     public AuthController(final JwtService jwtService,
                            final UserApiService userApiService,
                            final LoginAuditService loginAuditService,
                            final LoginRateLimiter loginRateLimiter,
-                           final PasswordResetService passwordResetService) {
+                           final PasswordResetService passwordResetService,
+                           final MfaService mfaService) {
         this.jwtService = jwtService;
         this.userApiService = userApiService;
         this.loginAuditService = loginAuditService;
         this.loginRateLimiter = loginRateLimiter;
         this.passwordResetService = passwordResetService;
+        this.mfaService = mfaService;
     }
 
     @PostMapping("/login")
@@ -60,10 +67,58 @@ public class AuthController {
         }
 
         final var user = result.user();
+        if (Boolean.TRUE.equals(user.getMfaEnabled())) {
+            return ResponseEntity.ok(Map.of("mfa_required", true, "mfa_token", jwtService.issueMfaChallengeToken(user)));
+        }
+        return ResponseEntity.ok(issueTokenPair(user));
+    }
+
+    /**
+     * Segunda etapa do login quando a conta tem MFA habilitado: troca o
+     * {@code mfa_token} (válido por 5min, prova só que usuário+senha bateram) por um
+     * código TOTP válido para finalmente emitir access+refresh.
+     */
+    @PostMapping("/mfa/login")
+    public ResponseEntity<?> mfaLogin(@RequestBody @Valid MfaLoginDTO dto, HttpServletRequest request) {
+        if (!loginRateLimiter.isAllowed("mfa-login:" + clientIp(request))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts, try again later"));
+        }
+
+        final var user = jwtService.validateMfaChallengeToken(dto.mfaToken());
+        if (!mfaService.verifyCode(user, dto.code())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid MFA code"));
+        }
+        return ResponseEntity.ok(issueTokenPair(user));
+    }
+
+    @PostMapping("/mfa/enroll")
+    public ResponseEntity<?> enrollMfa(Authentication authentication) {
+        final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
+        return ResponseEntity.ok(mfaService.enroll(user));
+    }
+
+    /** Confirma o primeiro código TOTP e só então habilita MFA na conta. */
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<Void> verifyMfa(Authentication authentication, @RequestBody @Valid MfaCodeDTO dto) {
+        final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
+        mfaService.verifyAndEnable(user, dto.code());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/mfa/disable")
+    public ResponseEntity<Void> disableMfa(Authentication authentication, @RequestBody @Valid MfaCodeDTO dto) {
+        final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
+        mfaService.disable(user, dto.code());
+        return ResponseEntity.noContent().build();
+    }
+
+    private Map<String, String> issueTokenPair(UserApi user) {
         Map<String, String> tokens = new HashMap<>();
         tokens.put("access_token", jwtService.generateToken(user));
         tokens.put("refresh_token", jwtService.issueRefreshToken(user));
-        return ResponseEntity.ok(tokens);
+        return tokens;
     }
 
     /**

@@ -101,6 +101,17 @@ public class UserApi implements UserDetails {
     // até esse instante. Combinado com isAccountNonLocked em isAccountNonLocked().
     private LocalDateTime lockedUntil;
 
+    // Segredo TOTP (Base32) — texto plano por simplicidade de projeto de estudo; um
+    // ambiente real guardaria isso cifrado em repouso (KMS/envelope encryption), nunca
+    // como coluna legível direto no banco. NULL até o primeiro /mfa/enroll. NotAudited:
+    // é segredo vivo, não faz sentido duplicar histórico dele numa tabela de auditoria.
+    @NotAudited
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String mfaSecret;
+
+    @Column(nullable = false)
+    private Boolean mfaEnabled;
+
     private LocalDateTime deletedAt;
 
     @CreatedDate
@@ -139,6 +150,7 @@ public class UserApi implements UserDetails {
         this.isEnabled = Objects.isNull(isEnabled) ? Boolean.TRUE : this.isEnabled;
         this.tokenVersion = Objects.isNull(tokenVersion) ? 0L : this.tokenVersion;
         this.failedLoginAttempts = Objects.isNull(failedLoginAttempts) ? 0 : this.failedLoginAttempts;
+        this.mfaEnabled = Objects.isNull(mfaEnabled) ? Boolean.FALSE : this.mfaEnabled;
     }
 
     @Override

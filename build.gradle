@@ -96,6 +96,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.data:spring-data-envers'
+    implementation 'dev.samstevens.totp:totp:1.7.1'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     implementation 'org.liquibase:liquibase-core'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'

@@ -44,11 +44,13 @@ public class JwtService extends OncePerRequestFilter {
     private static final String TOKEN_TYPE_CLAIM = "typ";
     private static final String ACCESS_TOKEN_TYPE = "access";
     private static final String REFRESH_TOKEN_TYPE = "refresh";
+    private static final String MFA_TOKEN_TYPE = "mfa";
     private static final String TOKEN_VERSION_CLAIM = "tv";
     private static final String JTI_CLAIM = "jti";
     private static final String FAMILY_CLAIM = "fam";
     private static final long ACCESS_TOKEN_VALIDITY_MS = 1_000 * 60 * 15L;
     private static final long REFRESH_TOKEN_VALIDITY_MS = 1_000 * 60 * 60 * 24L;
+    private static final long MFA_TOKEN_VALIDITY_MS = 1_000 * 60 * 5L;
 
     private final SecretKey secretKey;
     private final UserApiService userApiService;
@@ -86,6 +88,41 @@ public class JwtService extends OncePerRequestFilter {
                 .toList());
         claims.put("scope", "read write");
         return createToken(claims, user.getUsername(), ACCESS_TOKEN_VALIDITY_MS);
+    }
+
+    /**
+     * Token de curtíssima duração emitido no lugar do access/refresh quando a conta tem
+     * MFA habilitado — prova só que usuário+senha bateram, não é aceito por nenhum
+     * endpoint protegido normal (typ diferente de "access"). Precisa ser trocado por um
+     * código TOTP válido em {@code /api/v1/auth/mfa/login} dentro de 5 minutos.
+     */
+    public String issueMfaChallengeToken(final UserApi user) {
+        final var claims = new HashMap<String, Object>();
+        claims.put(TOKEN_TYPE_CLAIM, MFA_TOKEN_TYPE);
+        claims.put(TOKEN_VERSION_CLAIM, tokenVersionOf(user));
+        return createToken(claims, user.getUsername(), MFA_TOKEN_VALIDITY_MS);
+    }
+
+    public UserApi validateMfaChallengeToken(final String mfaToken) {
+        final io.jsonwebtoken.Claims claims;
+        try {
+            claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(mfaToken).getBody();
+        } catch (Exception e) {
+            throw new InvalidTokenException("Invalid or expired MFA token", e);
+        }
+        if (!MFA_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+            throw new InvalidTokenException("Not an MFA challenge token");
+        }
+        final UserApi user;
+        try {
+            user = (UserApi) userApiService.loadUserByUsername(claims.getSubject());
+        } catch (UsernameNotFoundException e) {
+            throw new InvalidTokenException("Invalid or expired MFA token", e);
+        }
+        if (!Objects.equals(tokenVersionOf(user), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
+            throw new InvalidTokenException("Invalid or expired MFA token");
+        }
+        return user;
     }
 
     /** Emite um refresh token abrindo uma nova família de rotação — uso exclusivo do login. */
