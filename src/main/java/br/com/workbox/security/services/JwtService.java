@@ -88,9 +88,19 @@ public class JwtService extends OncePerRequestFilter {
         final var authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final var token = authHeader.substring(7);
-            final var authenticationToken = getAuthentication(token);
-            if (authenticationToken != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            try {
+                final var authenticationToken = getAuthentication(token);
+                if (authenticationToken != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }
+            } catch (InvalidTokenException e) {
+                // Token malformado/expirado/assinatura inválida: segue sem autenticar em
+                // vez de deixar a exception subir crua pelo filtro (rodaria antes do
+                // DispatcherServlet, nenhum @ExceptionHandler pega isso — virava 500 até
+                // em endpoints públicos como /api/auth/login). authorizeHttpRequests
+                // decide o resto: público segue normal, protegido cai no
+                // AuthenticationEntryPoint com 401.
+                SecurityContextHolder.clearContext();
             }
         }
         filterChain.doFilter(request, response);
