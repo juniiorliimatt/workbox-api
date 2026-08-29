@@ -62,8 +62,8 @@ dependencyManagement {
 
 sonar {
     properties {
-        property "sonar.projectKey", "oojuniin_apiv2"
-        property "sonar.organization", "oojuniin"
+        property "sonar.projectKey", "sonar-group-oojuniiin_workbox-api"
+        property "sonar.organization", "sonar-group-oojuniiin"
         property "sonar.gradle.skipCompile", "true"
     }
 }
