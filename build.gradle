@@ -94,6 +94,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-web-services'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.data:spring-data-envers'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     implementation 'org.liquibase:liquibase-core'

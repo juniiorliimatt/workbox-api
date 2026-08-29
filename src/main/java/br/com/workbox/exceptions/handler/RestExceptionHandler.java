@@ -1,157 +1,97 @@
 package br.com.workbox.exceptions.handler;
 
 import br.com.workbox.exceptions.DatabaseException;
+import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
-import br.com.workbox.exceptions.models.ErrorResponse;
-import br.com.workbox.exceptions.models.FieldError;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
-import java.time.Instant;
-import java.util.List;
-
-@ControllerAdvice
+/**
+ * Corpo de erro padronizado em RFC 7807 ({@link ProblemDetail}, suporte nativo do
+ * Spring 6) — mesmo shape ({@code type/title/status/detail/instance} + extensões) pra
+ * qualquer exceção, incluindo o {@link #handleUnexpected} catch-all: sem ele, qualquer
+ * exceção não mapeada aqui caía no whitelabel error padrão do Spring, potencialmente
+ * vazando stack trace (depende de {@code server.error.include-stacktrace}).
+ */
+@RestControllerAdvice
 public class RestExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(RestExceptionHandler.class);
-    private static final HttpStatus BAD_REQUEST = HttpStatus.BAD_REQUEST;
-    private static final HttpStatus NOT_FOUND = HttpStatus.NOT_FOUND;
 
     @ExceptionHandler(JwtException.class)
-    public ResponseEntity<ErrorResponse> handlerJwtException(final JwtException exception, final HttpServletRequest request) {
-        final var errorResponse = ErrorResponse
-                .builder()
-                .timestamp(Instant.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .statusName(BAD_REQUEST.name())
-                .message(exception.getMessage())
-                .path(request.getRequestURI())
-                .exception(exception.getClass().getSimpleName())
-                .build();
-
-        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+    public ProblemDetail handleJwtException(final JwtException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<ErrorResponse> handlerInvalidTokenException(final InvalidTokenException exception, final HttpServletRequest request) {
-        final var errorResponse = ErrorResponse
-                .builder()
-                .timestamp(Instant.now())
-                .status(BAD_REQUEST.value())
-                .statusName(BAD_REQUEST.name())
-                .message(exception.getMessage())
-                .path(request.getRequestURI())
-                .exception(exception.getClass().getSimpleName())
-                .build();
+    public ProblemDetail handleInvalidTokenException(final InvalidTokenException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
 
-        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ProblemDetail handleInvalidRefreshTokenException(final InvalidRefreshTokenException exception) {
+        return problem(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handlerResourceNotFoundException(final ResourceNotFoundException exception, final HttpServletRequest request) {
-        final var errorResponse = ErrorResponse
-                .builder()
-                .timestamp(Instant.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .statusName(NOT_FOUND.name())
-                .message(exception.getMessage())
-                .path(request.getRequestURI())
-                .exception(exception.getClass().getSimpleName())
-                .build();
-
-        return ResponseEntity.status(NOT_FOUND).body(errorResponse);
+    public ProblemDetail handleResourceNotFoundException(final ResourceNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(final MethodArgumentNotValidException exception, final HttpServletRequest request) {
-        final BindingResult bindingResult = exception.getBindingResult();
-        final List<FieldError> fieldErrors = bindingResult.getFieldErrors()
-                .stream()
-                .map(error -> {
-                    final FieldError fieldError = new FieldError();
-                    fieldError.setErrorCode(error.getCode());
-                    fieldError.setField(error.getField());
-                    return fieldError;
-                }).toList();
-
-        final var errorResponse = ErrorResponse
-                .builder()
-                .timestamp(Instant.now())
-                .status(BAD_REQUEST.value())
-                .statusName(BAD_REQUEST.name())
-                .message(exception.getMessage())
-                .path(request.getRequestURI())
-                .exception(exception.getClass().getSimpleName())
-                .fieldErrors(fieldErrors)
-                .build();
-
-        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+    public ProblemDetail handleMethodArgumentNotValid(final MethodArgumentNotValidException exception) {
+        final var detail = problem(HttpStatus.BAD_REQUEST, "Validation failed");
+        detail.setProperty("errors", exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> Map.of("field", error.getField(), "message", String.valueOf(error.getDefaultMessage())))
+                .toList());
+        return detail;
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolationException(final ConstraintViolationException exception, final HttpServletRequest request) {
-        final var constraintViolations = exception.getConstraintViolations();
-        final List<FieldError> fieldErrors = constraintViolations
-                .stream()
-                .map(error -> {
-                    final FieldError fieldError = new FieldError();
-                    fieldError.setField(error.getPropertyPath().toString());
-                    fieldError.setErrorCode(error.getMessage());
-                    return fieldError;
-                }).toList();
-
-        final var errorResponse = ErrorResponse
-                .builder()
-                .timestamp(Instant.now())
-                .status(BAD_REQUEST.value())
-                .statusName(BAD_REQUEST.name())
-                .path(request.getRequestURI())
-                .exception(exception.getClass().getSimpleName())
-                .fieldErrors(fieldErrors)
-                .build();
-
-        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+    public ProblemDetail handleConstraintViolationException(final ConstraintViolationException exception) {
+        final var detail = problem(HttpStatus.BAD_REQUEST, "Validation failed");
+        detail.setProperty("errors", exception.getConstraintViolations().stream()
+                .map(violation -> Map.of("field", violation.getPropertyPath().toString(), "message", violation.getMessage()))
+                .toList());
+        return detail;
     }
 
     @ExceptionHandler(DatabaseException.class)
-    public ResponseEntity<ErrorResponse> handleDatabaseException(final DatabaseException exception, final HttpServletRequest request) {
+    public ProblemDetail handleDatabaseException(final DatabaseException exception, final HttpServletRequest request) {
         logger.error("Database error on {}", request.getRequestURI(), exception);
-        return getErrorResponseEntity(request, "Database error", exception.getClass().getSimpleName());
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Database error");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
+    public ProblemDetail handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
         logger.error("Data integrity violation on {}", request.getRequestURI(), exception);
-        return getErrorResponseEntity(request, "Data integrity violation", exception.getClass().getSimpleName());
+        return problem(HttpStatus.CONFLICT, "Data integrity violation");
     }
 
     @ExceptionHandler(LoginInvalidException.class)
-    public ResponseEntity<ErrorResponse> handleLoginInvalidExceptionException(final LoginInvalidException exception, final HttpServletRequest request) {
-        return getErrorResponseEntity(request, exception.getMessage(), exception.getClass().getSimpleName());
+    public ProblemDetail handleLoginInvalidException(final LoginInvalidException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
-    private ResponseEntity<ErrorResponse> getErrorResponseEntity(final HttpServletRequest request, final String message, final String simpleName) {
-        final var errorResponse = ErrorResponse.builder()
-                .timestamp(Instant.now())
-                .status(BAD_REQUEST.value())
-                .statusName(BAD_REQUEST.name())
-                .message(message)
-                .path(request.getRequestURI())
-                .exception(simpleName)
-                .build();
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpected(final Exception exception, final HttpServletRequest request) {
+        logger.error("Unhandled exception on {}", request.getRequestURI(), exception);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
+    }
 
-        return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+    private ProblemDetail problem(final HttpStatus status, final String detail) {
+        return ProblemDetail.forStatusAndDetail(status, detail);
     }
 }

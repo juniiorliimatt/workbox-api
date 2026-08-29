@@ -70,19 +70,22 @@ O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN`
 
 ## Autenticação
 
-JWT via `POST /api/auth/login` (retorna `access_token` + `refresh_token`) e
-`POST /api/auth/refresh`. Endpoints protegidos exigem `Authorization: Bearer <token>`.
+Todas as rotas são versionadas em path (`/api/v1/...`) desde o início — evita quebrar
+clients existentes no dia em que um contrato precisar de uma versão nova em paralelo.
+
+JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
+`POST /api/v1/auth/refresh`. Endpoints protegidos exigem `Authorization: Bearer <token>`.
 
 | Endpoint | Auth | O quê |
 |---|---|---|
-| `POST /api/auth/login` | público | Rate limit 10/min por IP; 5 tentativas erradas trava a conta por 15min (auto-expira) |
-| `POST /api/auth/refresh` | público | Troca refresh token por novo access token |
-| `POST /api/auth/logout` | Bearer | Incrementa `tokenVersion` — revoga todo token emitido antes |
-| `GET /api/auth/me` | Bearer | Dados do usuário autenticado |
-| `PUT /api/auth/password` | Bearer | Troca de senha, exige a senha atual |
-| `POST /api/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único |
-| `POST /api/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
-| `GET/POST/PUT/DELETE /api/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
+| `POST /api/v1/auth/login` | público | Rate limit 10/min por IP; 5 tentativas erradas trava a conta por 15min (auto-expira) |
+| `POST /api/v1/auth/refresh` | público | Rotação de refresh token (uso único) — reapresentar um já usado revoga a família inteira (reuso = token roubado) |
+| `POST /api/v1/auth/logout` | Bearer | Incrementa `tokenVersion` — revoga todo token emitido antes |
+| `GET /api/v1/auth/me` | Bearer | Dados do usuário autenticado |
+| `PUT /api/v1/auth/password` | Bearer | Troca de senha, exige a senha atual |
+| `POST /api/v1/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único; rate limit por e-mail |
+| `POST /api/v1/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
+| `GET/POST/PUT/DELETE /api/v1/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
 
 **Login social** (Google) fica inativo até `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID`/`_CLIENT_SECRET`
 serem setados como variável de ambiente — sem isso, nem o bean existe, zero impacto na
@@ -91,6 +94,18 @@ subida da aplicação.
 Toda tentativa de login (sucesso ou falha) fica em `login_audit`. Mudanças em `UserApi`/
 `Role` ficam versionadas via Hibernate Envers (`users_api_aud`/`roles_aud` + `rev_info`,
 quem mudou vem do `SecurityContext`).
+
+## Observabilidade
+
+- Erros seguem RFC 7807 (`ProblemDetail`) — mesmo shape (`type/title/status/detail/instance`)
+  em toda a API, incluindo um handler catch-all pra qualquer exceção não mapeada (nunca
+  cai no whitelabel error do Spring, que poderia vazar stack trace).
+- Toda requisição carrega um `X-Request-Id` (gerado ou propagado do client) via MDC —
+  aparece em todo log da requisição, correlacionável com o mesmo header repassado a um
+  resource server downstream (ex.: budget-service).
+- `/actuator/prometheus` exposto junto com `/actuator/health` (métricas Micrometer) —
+  aberto por conveniência de estudo/scrape local; num ambiente real, restringir pela rede
+  de origem em vez de deixar público.
 
 ## Contrato de API (OpenAPI)
 

@@ -64,7 +64,7 @@ public class PasswordRecoverySteps {
     @Quando("eu peço recuperação de senha para o e-mail {string}")
     public void euPecoRecuperacaoDeSenha(String email) throws Exception {
         final var body = objectMapper.writeValueAsString(new ForgotPasswordDTO(email));
-        context.setResult(mockMvc.perform(post("/api/auth/forgot-password")
+        context.setResult(mockMvc.perform(post("/api/v1/auth/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn());
@@ -94,7 +94,7 @@ public class PasswordRecoverySteps {
     @Então("eu consigo logar com usuário {string} e senha {string}")
     public void euConsigoLogarComUsuarioESenha(String username, String password) throws Exception {
         final var body = objectMapper.writeValueAsString(new UserApiLoginCredentialsDTO(username, password));
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(MockMvcResultMatchers.status().isOk());
@@ -102,7 +102,7 @@ public class PasswordRecoverySteps {
 
     private void redefinirSenha(String token, String novaSenha) throws Exception {
         final var body = objectMapper.writeValueAsString(new ResetPasswordDTO(token, novaSenha));
-        context.setResult(mockMvc.perform(post("/api/auth/reset-password")
+        context.setResult(mockMvc.perform(post("/api/v1/auth/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn());

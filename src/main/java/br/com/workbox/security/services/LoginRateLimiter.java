@@ -10,10 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * Sliding window em memória, por IP — suficiente pra uma instância única (não escala
- * horizontalmente; múltiplas instâncias precisariam de um contador compartilhado, ex.
- * Redis). Complementa o lockout por conta em {@link UserApiService#attemptLogin}: esse
- * aqui pega o atacante testando várias contas do mesmo IP.
+ * Sliding window em memória, por chave arbitrária — suficiente pra uma instância única
+ * (não escala horizontalmente; múltiplas instâncias precisariam de um contador
+ * compartilhado, ex. Redis). Compartilhado pelos endpoints públicos de
+ * {@code AuthController} (login, refresh, forgot-password), cada um com sua própria
+ * janela dentro do mesmo mapa via prefixo de chave ({@code "login:"+ip},
+ * {@code "refresh:"+ip}, {@code "forgot-password:"+email}) — mesmo limite/janela pra
+ * todos, mas contadores independentes. Complementa o lockout por conta em
+ * {@link UserApiService#attemptLogin}: esse aqui pega o atacante testando várias contas
+ * do mesmo IP.
  *
  * Limite configurável (não só um {@code final int}) porque os cenários de Cucumber
  * rodam dezenas de logins no mesmo "IP" (MockMvc) dentro da mesma janela — sem isso o

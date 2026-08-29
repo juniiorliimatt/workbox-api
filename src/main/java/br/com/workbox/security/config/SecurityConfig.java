@@ -1,5 +1,6 @@
 package br.com.workbox.security.config;
 
+import br.com.workbox.config.CorrelationIdFilter;
 import br.com.workbox.security.oauth2.OAuth2LoginSuccessHandler;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.UserApiService;
@@ -31,8 +32,8 @@ public class SecurityConfig {
 
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String ROLE_USER = "USER";
-    private static final String API_USER = "/api/user/**";
-    private static final String API_ROLE = "/api/role/**";
+    private static final String API_USER = "/api/v1/user/**";
+    private static final String API_ROLE = "/api/v1/role/**";
 
     private final Environment env;
     private final JwtService jwtService;
@@ -60,10 +61,10 @@ public class SecurityConfig {
 
         httpSecurity.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh",
-                        "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh",
+                        "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers(HttpMethod.GET, API_USER).hasAnyRole(ROLE_ADMIN, ROLE_USER)
                 .requestMatchers(HttpMethod.POST, API_USER).hasRole(ROLE_ADMIN)
@@ -97,6 +98,17 @@ public class SecurityConfig {
                 )
         );
 
+        // CorrelationIdFilter registrado primeiro: Spring Security não permite ancorar um
+        // filtro customizado em outro filtro customizado (só em classes padrão como
+        // UsernamePasswordAuthenticationFilter) — ambos ancoram no mesmo padrão, e a
+        // ordem relativa entre eles fica definida pela ordem de chamada aqui (empate no
+        // valor de ordem é resolvido por sort estável, preservando a ordem de inserção).
+        // CorrelationIdFilter registrado primeiro: Spring Security não permite ancorar um
+        // filtro customizado em outro filtro customizado (só em classes padrão como
+        // UsernamePasswordAuthenticationFilter) — ambos ancoram no mesmo padrão, e a
+        // ordem relativa entre eles fica definida pela ordem de chamada aqui (empate no
+        // valor de ordem é resolvido por sort estável, preservando a ordem de inserção).
+        httpSecurity.addFilterBefore(new CorrelationIdFilter(), UsernamePasswordAuthenticationFilter.class);
         httpSecurity.addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();

@@ -59,7 +59,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         final var user = userApiRepository.findByEmail(email).orElseGet(() -> provisionUser(email));
 
         final var accessToken = jwtService.generateToken(user);
-        final var refreshToken = jwtService.generateRefreshToken(user);
+        final var refreshToken = jwtService.issueRefreshToken(user);
 
         final var redirectUrl = frontendBaseUrl + "/oauth2/callback"
                 + "?access_token=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)

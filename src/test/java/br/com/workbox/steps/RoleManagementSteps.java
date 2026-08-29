@@ -67,7 +67,7 @@ public class RoleManagementSteps {
     @Quando("eu crio a role {string}")
     public void euCrioARole(String authority) throws Exception {
         final var body = objectMapper.writeValueAsString(new RoleDTO(null, authority));
-        context.setResult(mockMvc.perform(post("/api/role")
+        context.setResult(mockMvc.perform(post("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -83,7 +83,7 @@ public class RoleManagementSteps {
     public void euAtualizoARolePara(String authorityAtual, String novaAuthority) throws Exception {
         final var id = roleIdsByAuthority.get(authorityAtual.toUpperCase());
         final var body = objectMapper.writeValueAsString(new RoleDTO(id, novaAuthority));
-        context.setResult(mockMvc.perform(put("/api/role/" + id)
+        context.setResult(mockMvc.perform(put("/api/v1/role/" + id)
                         .header("Authorization", "Bearer " + context.getAccessToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -94,21 +94,21 @@ public class RoleManagementSteps {
     @Quando("eu removo a role {string}")
     public void euRemovoARole(String authority) throws Exception {
         final var id = roleIdsByAuthority.get(authority.toUpperCase());
-        context.setResult(mockMvc.perform(delete("/api/role/" + id)
+        context.setResult(mockMvc.perform(delete("/api/v1/role/" + id)
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn());
     }
 
     @Quando("eu listo as roles")
     public void euListoAsRoles() throws Exception {
-        context.setResult(mockMvc.perform(get("/api/role")
+        context.setResult(mockMvc.perform(get("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn());
     }
 
     @Então("a role {string} aparece na listagem")
     public void aRoleApareceNaListagem(String authority) throws Exception {
-        final var response = mockMvc.perform(get("/api/role")
+        final var response = mockMvc.perform(get("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn().getResponse().getContentAsString();
         assertThat(response).contains("\"" + authority.toUpperCase() + "\"");
@@ -116,7 +116,7 @@ public class RoleManagementSteps {
 
     @Então("a role {string} não aparece mais na listagem")
     public void aRoleNaoApareceMaisNaListagem(String authority) throws Exception {
-        final var response = mockMvc.perform(get("/api/role")
+        final var response = mockMvc.perform(get("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn().getResponse().getContentAsString();
         assertThat(response).doesNotContain("\"" + authority.toUpperCase() + "\"");

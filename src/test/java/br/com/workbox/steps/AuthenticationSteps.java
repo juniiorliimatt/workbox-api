@@ -64,14 +64,14 @@ public class AuthenticationSteps {
 
     @Quando("eu faço logout")
     public void euFacoLogout() throws Exception {
-        context.setResult(mockMvc.perform(post("/api/auth/logout")
+        context.setResult(mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn());
     }
 
     @Quando("eu consulto meus dados")
     public void euConsultoMeusDados() throws Exception {
-        context.setResult(mockMvc.perform(get("/api/auth/me")
+        context.setResult(mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn());
     }
@@ -81,7 +81,7 @@ public class AuthenticationSteps {
         final var body = objectMapper.writeValueAsString(
                 new br.com.workbox.security.dto.ChangePasswordDTO(senhaAtual, novaSenha));
 
-        context.setResult(mockMvc.perform(put("/api/auth/password")
+        context.setResult(mockMvc.perform(put("/api/v1/auth/password")
                         .header("Authorization", "Bearer " + context.getAccessToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -109,7 +109,7 @@ public class AuthenticationSteps {
 
     @Então("minhas requisições autenticadas com o token antigo são rejeitadas")
     public void minhasRequisicoesComTokenAntigoSaoRejeitadas() throws Exception {
-        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + context.getAccessToken()))
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + context.getAccessToken()))
                 .andExpect(MockMvcResultMatchers.status().isUnauthorized());
     }
 
@@ -117,7 +117,7 @@ public class AuthenticationSteps {
         final var body = objectMapper.writeValueAsString(
                 new br.com.workbox.security.dto.UserApiLoginCredentialsDTO(username, password));
 
-        return mockMvc.perform(post("/api/auth/login")
+        return mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn();

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
+import br.com.workbox.security.services.RefreshTokenService;
 import br.com.workbox.security.services.UserApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
@@ -46,6 +47,9 @@ class UserApiControllerTest {
     @MockBean
     private UserApiService userApiService;
 
+    @MockBean
+    private RefreshTokenService refreshTokenService;
+
     @BeforeEach
     void setUp() {
         this.id = UUID.randomUUID();
@@ -68,7 +72,7 @@ class UserApiControllerTest {
         final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getEmail(), userApi.getIsEnabled());
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
 
-        mockMvc.perform(get("/api/user/" + this.id))
+        mockMvc.perform(get("/api/v1/user/" + this.id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/hal+json"))
                 .andExpect(jsonPath("$.username").value(USERNAME));

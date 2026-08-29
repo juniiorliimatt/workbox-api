@@ -14,7 +14,7 @@ servers:
 security:
 - bearer-jwt: []
 paths:
-  /api/auth/forgot-password:
+  /api/v1/auth/forgot-password:
     post:
       operationId: forgotPassword
       requestBody:
@@ -25,10 +25,14 @@ paths:
         required: true
       responses:
         "200":
+          content:
+            '*/*':
+              schema:
+                type: object
           description: OK
       tags:
       - auth-controller
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       operationId: login
       requestBody:
@@ -43,12 +47,10 @@ paths:
             '*/*':
               schema:
                 type: object
-                additionalProperties:
-                  type: string
           description: OK
       tags:
       - auth-controller
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       operationId: logout
       responses:
@@ -56,7 +58,7 @@ paths:
           description: OK
       tags:
       - auth-controller
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       operationId: me
       responses:
@@ -68,7 +70,7 @@ paths:
           description: OK
       tags:
       - auth-controller
-  /api/auth/password:
+  /api/v1/auth/password:
     put:
       operationId: changePassword
       requestBody:
@@ -82,7 +84,7 @@ paths:
           description: OK
       tags:
       - auth-controller
-  /api/auth/refresh:
+  /api/v1/auth/refresh:
     post:
       operationId: refresh
       parameters:
@@ -97,12 +99,10 @@ paths:
             '*/*':
               schema:
                 type: object
-                additionalProperties:
-                  type: string
           description: OK
       tags:
       - auth-controller
-  /api/auth/reset-password:
+  /api/v1/auth/reset-password:
     post:
       operationId: resetPassword
       requestBody:
@@ -116,7 +116,7 @@ paths:
           description: OK
       tags:
       - auth-controller
-  /api/role:
+  /api/v1/role:
     get:
       operationId: findAll
       responses:
@@ -147,7 +147,7 @@ paths:
           description: Created
       tags:
       - role-controller
-  /api/role/{id}:
+  /api/v1/role/{id}:
     delete:
       operationId: delete
       parameters:
@@ -204,7 +204,7 @@ paths:
           description: OK
       tags:
       - role-controller
-  /api/user/find-all:
+  /api/v1/user/find-all:
     get:
       operationId: findAll_2
       parameters:
@@ -221,7 +221,7 @@ paths:
           description: OK
       tags:
       - user-api-controller
-  /api/user/pageable:
+  /api/v1/user/pageable:
     get:
       operationId: findAll_1
       parameters:
@@ -243,7 +243,7 @@ paths:
           description: OK
       tags:
       - user-api-controller
-  /api/user/save:
+  /api/v1/user/save:
     post:
       operationId: save
       parameters:
@@ -266,7 +266,7 @@ paths:
           description: Created
       tags:
       - user-api-controller
-  /api/user/update:
+  /api/v1/user/update:
     put:
       operationId: update
       parameters:
@@ -289,7 +289,7 @@ paths:
           description: OK
       tags:
       - user-api-controller
-  /api/user/{id}:
+  /api/v1/user/{id}:
     delete:
       operationId: delete_1
       parameters:

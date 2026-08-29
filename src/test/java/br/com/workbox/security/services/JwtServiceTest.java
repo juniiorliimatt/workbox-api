@@ -2,6 +2,7 @@ package br.com.workbox.security.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,8 @@ import static org.mockito.Mockito.when;
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
+import br.com.workbox.security.services.RefreshTokenService.RotationResult;
+import br.com.workbox.security.services.RefreshTokenService.RotationStatus;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.FilterChain;
@@ -34,12 +37,14 @@ class JwtServiceTest {
             new SecretKeySpec("MyS3cur3P@ssw0rd12345!ThisIs32Bytes!".getBytes(), "HmacSHA256");
 
     private UserApiService userApiService;
+    private RefreshTokenService refreshTokenService;
     private JwtService jwtService;
 
     @BeforeEach
     void setUp() {
         userApiService = mock(UserApiService.class);
-        jwtService = new JwtService(SECRET_KEY, userApiService);
+        refreshTokenService = mock(RefreshTokenService.class);
+        jwtService = new JwtService(SECRET_KEY, userApiService, refreshTokenService);
     }
 
     @AfterEach
@@ -96,10 +101,10 @@ class JwtServiceTest {
         }
 
         @Test
-        @DisplayName("refresh token carrega typ=refresh e tv")
+        @DisplayName("refresh token carrega typ=refresh, tv, jti e fam")
         void refreshTokenClaims() {
             final var user = enabledUser("alice");
-            final var token = jwtService.generateRefreshToken(user);
+            final var token = jwtService.issueRefreshToken(user);
 
             final var claims = Jwts.parserBuilder().setSigningKey(SECRET_KEY).build()
                     .parseClaimsJws(token).getBody();
@@ -107,6 +112,8 @@ class JwtServiceTest {
             assertThat(claims.get("typ")).isEqualTo("refresh");
             assertThat(claims.get("tv", Long.class)).isEqualTo(0L);
             assertThat(claims.getSubject()).isEqualTo("alice");
+            assertThat(claims.get("jti", String.class)).isNotBlank();
+            assertThat(claims.get("fam", String.class)).isNotBlank();
         }
     }
 
@@ -208,17 +215,51 @@ class JwtServiceTest {
     }
 
     @Nested
-    @DisplayName("validateRefreshToken")
-    class ValidateRefreshToken {
+    @DisplayName("rotateRefreshToken")
+    class RotateRefreshToken {
 
         @Test
-        @DisplayName("token de refresh válido retorna o usuário")
-        void validRefreshTokenReturnsUser() {
+        @DisplayName("token de refresh válido e não usado retorna novo par access+refresh")
+        void validUnusedTokenRotates() {
             final var user = enabledUser("alice");
             when(userApiService.loadUserByUsername("alice")).thenReturn(user);
-            final var token = jwtService.generateRefreshToken(user);
+            final var token = jwtService.issueRefreshToken(user);
+            final var claims = Jwts.parserBuilder().setSigningKey(SECRET_KEY).build().parseClaimsJws(token).getBody();
+            final var familyId = UUID.fromString(claims.get("fam", String.class));
+            when(refreshTokenService.consume(any())).thenReturn(new RotationResult(RotationStatus.OK, familyId));
 
-            assertThat(jwtService.validateRefreshToken(token).getUsername()).isEqualTo("alice");
+            final var result = jwtService.rotateRefreshToken(token);
+
+            assertThat(result.accessToken()).isNotBlank();
+            assertThat(result.refreshToken()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("jti já revogado (reuso) lança exceção")
+        void reusedTokenRevokesFamily() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = jwtService.issueRefreshToken(user);
+            final var claims = Jwts.parserBuilder().setSigningKey(SECRET_KEY).build().parseClaimsJws(token).getBody();
+            final var familyId = UUID.fromString(claims.get("fam", String.class));
+            when(refreshTokenService.consume(any())).thenReturn(new RotationResult(RotationStatus.REUSED, familyId));
+
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
+                    .isInstanceOf(InvalidRefreshTokenException.class)
+                    .hasMessageContaining("reuse");
+        }
+
+        @Test
+        @DisplayName("jti não encontrado no banco é rejeitado")
+        void unknownJtiIsRejected() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = jwtService.issueRefreshToken(user);
+            when(refreshTokenService.consume(any())).thenReturn(new RotationResult(RotationStatus.NOT_FOUND, null));
+
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
+                    .isInstanceOf(InvalidRefreshTokenException.class)
+                    .hasMessageContaining("not recognized");
         }
 
         @Test
@@ -226,7 +267,7 @@ class JwtServiceTest {
         void expiredTokenThrows() {
             final var expired = rawToken("refresh", "alice", -1_000, 0L);
 
-            assertThatThrownBy(() -> jwtService.validateRefreshToken(expired))
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken(expired))
                     .isInstanceOf(InvalidRefreshTokenException.class);
         }
 
@@ -235,20 +276,20 @@ class JwtServiceTest {
         void accessTokenRejectedAsRefresh() {
             final var accessToken = jwtService.generateToken(enabledUser("alice"));
 
-            assertThatThrownBy(() -> jwtService.validateRefreshToken(accessToken))
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken(accessToken))
                     .isInstanceOf(InvalidRefreshTokenException.class)
                     .hasMessageContaining("not a refresh token");
         }
 
         @Test
-        @DisplayName("refresh token com tokenVersion desatualizada (revogado) é rejeitado")
-        void revokedRefreshTokenIsRejected() {
+        @DisplayName("refresh token com tokenVersion desatualizada (revogado via logout) é rejeitado")
+        void revokedTokenVersionIsRejected() {
             final var user = enabledUser("alice");
-            final var token = jwtService.generateRefreshToken(user); // tv=0
+            final var token = jwtService.issueRefreshToken(user); // tv=0
             user.setTokenVersion(1L); // logout aconteceu depois de emitido
             when(userApiService.loadUserByUsername("alice")).thenReturn(user);
 
-            assertThatThrownBy(() -> jwtService.validateRefreshToken(token))
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
                     .isInstanceOf(InvalidRefreshTokenException.class)
                     .hasMessageContaining("revoked");
         }
@@ -256,7 +297,7 @@ class JwtServiceTest {
         @Test
         @DisplayName("token com assinatura inválida lança InvalidRefreshTokenException")
         void garbageTokenThrows() {
-            assertThatThrownBy(() -> jwtService.validateRefreshToken("nao-e-um-jwt"))
+            assertThatThrownBy(() -> jwtService.rotateRefreshToken("nao-e-um-jwt"))
                     .isInstanceOf(InvalidRefreshTokenException.class);
         }
     }

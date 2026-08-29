@@ -1,6 +1,5 @@
 package br.com.workbox.security.controllers;
 
-import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.ForgotPasswordDTO;
 import br.com.workbox.security.dto.ResetPasswordDTO;
@@ -14,6 +13,7 @@ import br.com.workbox.security.services.UserApiService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final JwtService jwtService;
@@ -44,36 +44,46 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody UserApiLoginCredentialsDTO dto, HttpServletRequest request) {
+    public ResponseEntity<?> login(@RequestBody UserApiLoginCredentialsDTO dto, HttpServletRequest request) {
         final var ip = clientIp(request);
-        if (!loginRateLimiter.isAllowed(ip)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many login attempts, try again later"));
+        if (!loginRateLimiter.isAllowed("login:" + ip)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many login attempts, try again later"));
         }
 
         final var result = userApiService.attemptLogin(dto.username(), dto.password());
         loginAuditService.record(dto.username(), result.success(), result.failureReason(), ip);
 
         if (!result.success()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid username or password"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
         }
 
         final var user = result.user();
         Map<String, String> tokens = new HashMap<>();
         tokens.put("access_token", jwtService.generateToken(user));
-        tokens.put("refresh_token", jwtService.generateRefreshToken(user));
+        tokens.put("refresh_token", jwtService.issueRefreshToken(user));
         return ResponseEntity.ok(tokens);
     }
 
+    /**
+     * Refresh token é de uso único (rotação): cada chamada aqui revoga o token
+     * apresentado e devolve um novo par access+refresh. Reapresentar um refresh token já
+     * usado é tratado como reuso de token roubado — ver
+     * {@link JwtService#rotateRefreshToken}.
+     */
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> refresh(@RequestParam String refreshToken) {
-        try {
-            final var user = jwtService.validateRefreshToken(refreshToken);
-            Map<String, String> tokens = new HashMap<>();
-            tokens.put("access_token", jwtService.generateToken(user));
-            return ResponseEntity.ok(tokens);
-        } catch (InvalidRefreshTokenException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired refresh token"));
+    public ResponseEntity<?> refresh(@RequestParam String refreshToken, HttpServletRequest request) {
+        if (!loginRateLimiter.isAllowed("refresh:" + clientIp(request))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many refresh attempts, try again later"));
         }
+
+        final var rotated = jwtService.rotateRefreshToken(refreshToken);
+        Map<String, String> tokens = new HashMap<>();
+        tokens.put("access_token", rotated.accessToken());
+        tokens.put("refresh_token", rotated.refreshToken());
+        return ResponseEntity.ok(tokens);
     }
 
     @PostMapping("/logout")
@@ -94,7 +104,13 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestBody @Valid ForgotPasswordDTO dto) {
+    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordDTO dto) {
+        // Chave por e-mail (não IP): um atacante rotacionando IP não ganha tentativas
+        // extras contra o mesmo endereço.
+        if (!loginRateLimiter.isAllowed("forgot-password:" + dto.email().toLowerCase())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many password reset requests, try again later"));
+        }
         // Sempre 204, exista ou não o e-mail — não revelar quais e-mails têm conta.
         passwordResetService.requestReset(dto.email());
         return ResponseEntity.noContent().build();

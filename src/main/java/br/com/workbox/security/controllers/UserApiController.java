@@ -23,7 +23,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/v1/user")
 public class UserApiController {
 
     private final UserApiService userApiService;
@@ -71,7 +71,7 @@ public class UserApiController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<UserApiDTO> save(@RequestBody @Valid final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO, final UriComponentsBuilder uriBuilder) {
         final var newUser = userApiService.save(userApiInsertOrUpdateDTO);
-        URI uri = uriBuilder.path("/user/{id}").buildAndExpand(newUser.getId()).toUri();
+        URI uri = uriBuilder.path("/api/v1/user/{id}").buildAndExpand(newUser.getId()).toUri();
         return ResponseEntity.created(uri).body(newUser);
     }
 
