@@ -52,6 +52,9 @@ Profiles disponíveis (`spring.profiles.active`):
 Variáveis de ambiente relevantes: `PORT` (default 8080), `JWT_SECRET`, `DATABASE_URL`,
 `POSTGRES_USER`, `POSTGRES_PASSWORD`, `SCHEMA` (default `api`), `admin.password`.
 
+Postgres local roda fora deste repo (ver [README raiz](../README.md#rodando-localmente))
+na porta **5433**, não 5432 — passe `DATABASE_URL=jdbc:postgresql://localhost:5433/workbox`.
+
 O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN` roles) e
 `user` para desenvolvimento local.
 
