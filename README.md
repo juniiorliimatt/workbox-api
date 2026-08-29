@@ -1,142 +1,120 @@
-# apiV2
+# workbox-api
 
+Backend REST do [monorepo `workbox`](../README.md) — API de autenticação/usuários,
+servida junto com o build do [`workbox-app`](../workbox-app/README.md) num único JAR.
 
-## Swagger
-- [swagger link](http://localhost:8080/swagger-ui/index.html)
+## Stack
 
+| Camada | Tecnologia |
+|---|---|
+| Linguagem / runtime | Java 26 (toolchain Gradle) |
+| Framework | Spring Boot 3.5.16 |
+| Build | Gradle 9.7.1 |
+| Persistência | Spring Data JPA + Hibernate, Liquibase (migrations) |
+| Banco | PostgreSQL (dev/prod), H2 em memória (test) |
+| Segurança | Spring Security 6 + JWT (`io.jsonwebtoken`), OAuth2 resource server/client |
+| Hypermedia | Spring HATEOAS |
+| Documentação de API | springdoc-openapi (Swagger UI + contrato versionado) |
+| Cobertura | JaCoCo |
+| Análise estática | SonarQube/SonarCloud |
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Estrutura de pacotes
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/oojuniin/apiv2.git
-git branch -M main
-git push -uf origin main
+br.com.workbox
+├── config/            Configuração geral (OpenAPI, JPA auditing, servir o frontend)
+├── core/               Anotações/utilitários compartilhados
+├── exceptions/         Exceções de domínio + handler global (RestExceptionHandler)
+└── security/
+    ├── config/         Spring Security, CORS, JWT filter
+    ├── controllers/     AuthController, UserApiController
+    ├── dto/             DTOs de entrada/saída
+    ├── entities/         UserApi, Role
+    ├── repositories/     Spring Data JPA
+    └── services/         JwtService, UserApiService
 ```
 
-## Integrate with your tools
+## Rodando localmente
 
-- [ ] [Set up project integrations](https://gitlab.com/oojuniin/apiv2/-/settings/integrations)
+Profiles disponíveis (`spring.profiles.active`):
 
-## Collaborate with your team
+| Profile | Banco | Uso |
+|---|---|---|
+| `test` | H2 em memória, schema criado via Hibernate (`ddl-auto=create-drop`) | Testes automatizados, geração do contrato OpenAPI — não precisa de Postgres |
+| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:5432/workbox`) | Desenvolvimento — schema via Liquibase |
+| `prod` | PostgreSQL via `DATABASE_URL` (obrigatório) | Deploy |
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```bash
+./gradlew bootRun                                    # profile dev, exige Postgres local
+./gradlew bootRun --args='--spring.profiles.active=test'  # sem dependência externa
+```
 
-## Test and Deploy
+Variáveis de ambiente relevantes: `PORT` (default 8080), `JWT_SECRET`, `DATABASE_URL`,
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `SCHEMA` (default `api`), `admin.password`.
 
-Use the built-in continuous integration in GitLab.
+O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN` roles) e
+`user` para desenvolvimento local.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Autenticação
 
-***
+JWT via `POST /api/auth/login` (retorna `access_token` + `refresh_token`) e
+`POST /api/auth/refresh`. Endpoints protegidos exigem `Authorization: Bearer <token>`.
 
-# Editing this README
+## Contrato de API (OpenAPI)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+`openapi/openapi.yaml` é o contrato REST versionado desta API — fonte da verdade para
+qualquer client (frontend `workbox-app`, agentes de IA) que a consuma. Não assuma
+comportamento de endpoint que não esteja descrito nesse arquivo.
 
-## Suggestions for a good README
+**Regra**: qualquer mudança de contrato (novo endpoint, novo campo, mudança de schema)
+exige regenerar e commitar o arquivo junto com a mudança de código. O job
+`contract-drift-check` do CI falha o pipeline se o arquivo commitado divergir do gerado
+a partir do código.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Para regenerar localmente:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+./gradlew generateOpenApiDocs
+git diff openapi/openapi.yaml
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+A task sobe a aplicação com o profile `test` (H2 em memória, sem dependência de
+Postgres), baixa `/v3/api-docs.yaml` e grava em `openapi/openapi.yaml`. Com o app
+rodando, o Swagger UI fica em `/swagger-ui/index.html`.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Ver também: [AGENTS.md](../AGENTS.md), que descreve como este contrato alinha o
+desenvolvimento entre o agente de backend (Claude Code) e o de frontend (Antigravity).
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Testes
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```bash
+./gradlew check          # testes + JaCoCo
+./gradlew jacocoTestReport   # relatório em build/jacocoHtml
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+JUnit 5 + Spring Boot Test + MockMvc. `ApiControllerTestConfig` sobrescreve
+intencionalmente os beans de segurança (`spring.main.allow-bean-definition-overriding=true`
+no profile `test`) para isolar os testes de controller do fluxo real de
+autenticação/DB.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## CI/CD
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+`.gitlab-ci.yml`: `test` (build + testes) → `contract-drift-check` (contrato em dia) →
+`build` (empacota o JAR). `sonarcloud-check` roda análise estática em MRs e nas branches
+`main`/`develop`.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Deploy
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Single-jar: o build do `workbox-app` (`npm run build`) escreve direto em
+`src/main/resources/static/`, e `FrontendController` serve o `index.html` na raiz —
+um único artefato sobe API + SPA. `Procfile`/`system.properties` configuram deploy
+estilo Heroku (JDK 26).
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## Referências
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
-
-
-### Reference Documentation
-
-For further reference, please consider the following sections:
-
-* [Official Gradle documentation](https://docs.gradle.org)
-* [Spring Boot Gradle Plugin Reference Guide](https://docs.spring.io/spring-boot/3.3.4/gradle-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.3.4/gradle-plugin/packaging-oci-image.html)
-* [Spring Data JDBC](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#data.sql.jdbc)
-* [Spring Data JPA](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#data.sql.jpa-and-spring-data)
-* [Spring Boot DevTools](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#using.devtools)
-* [Spring HATEOAS](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.spring-hateoas)
-* [Liquibase Migration](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#howto.data-initialization.migration-tool.liquibase)
-* [Java Mail Sender](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#io.email)
-* [OAuth2 Authorization Server](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.security.oauth2.authorization-server)
-* [OAuth2 Client](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.security.oauth2.client)
-* [OAuth2 Resource Server](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.security.oauth2.server)
-* [Spring Security](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.security)
-* [Thymeleaf](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web.servlet.spring-mvc.template-engines)
-* [Validation](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#io.validation)
-* [Spring Web](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#web)
-* [Spring Web Services](https://docs.spring.io/spring-boot/docs/3.3.4/reference/htmlsingle/index.html#io.webservices)
-
-### Guides
-
-The following guides illustrate how to use some features concretely:
-
-* [Using Spring Data JDBC](https://github.com/spring-projects/spring-data-examples/tree/master/jdbc/basics)
-* [Accessing Data with JPA](https://spring.io/guides/gs/accessing-data-jpa/)
-* [Building a Hypermedia-Driven RESTful Web Service](https://spring.io/guides/gs/rest-hateoas/)
-* [Securing a Web Application](https://spring.io/guides/gs/securing-web/)
-* [Spring Boot and OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2/)
-* [Authenticating a User with LDAP](https://spring.io/guides/gs/authenticating-ldap/)
-* [Handling Form Submission](https://spring.io/guides/gs/handling-form-submission/)
-* [Validation](https://spring.io/guides/gs/validating-form-input/)
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
-* [Producing a SOAP web service](https://spring.io/guides/gs/producing-web-service/)
-
-### Additional Links
-
-These additional references should also help you:
-
-* [Gradle Build Scans – insights for your project's build](https://scans.gradle.com#gradle)
+* [Spring Boot Gradle Plugin](https://docs.spring.io/spring-boot/gradle-plugin) ·
+  [Spring Data JPA](https://spring.io/guides/gs/accessing-data-jpa/) ·
+  [Spring Security](https://spring.io/guides/gs/securing-web/) ·
+  [Spring HATEOAS](https://spring.io/guides/gs/rest-hateoas/) ·
+  [Liquibase](https://docs.spring.io/spring-boot/reference/howto/data-initialization.html#howto.data-initialization.migration-tool.liquibase) ·
+  [springdoc-openapi](https://springdoc.org/)

@@ -57,7 +57,7 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers(HttpMethod.GET, BAR + USER).hasAnyRole(ROLE_ADMIN, ROLE_USER)
                 .requestMatchers(HttpMethod.POST, BAR + USER).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.PUT, BAR + USER).hasRole(ROLE_ADMIN)
