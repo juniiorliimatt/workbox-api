@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 /**
  * Sem isso, {@code refresh_tokens} cresce sem limite (uma linha por login/rotação, nunca
  * apagada) — expurga diariamente o que já expirou, revogado ou não.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Component
 public class RefreshTokenCleanupJob {

@@ -22,6 +22,12 @@ import java.util.UUID;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
+ */
+
 @RestController
 @RequestMapping("/api/v1/user")
 public class UserApiController {

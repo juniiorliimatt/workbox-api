@@ -9,6 +9,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 /**
  * Instanciado pelo Hibernate, não pelo Spring — sem DI, por isso lê o SecurityContext
  * estaticamente em vez de injetar um AuditorAware.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 public class RevisionListenerImpl implements RevisionListener {
 

@@ -36,6 +36,12 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
+ */
+
 @Service
 public class JwtService extends OncePerRequestFilter {
 

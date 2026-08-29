@@ -24,6 +24,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
  * qualquer exceção, incluindo o {@link #handleUnexpected} catch-all: sem ele, qualquer
  * exceção não mapeada aqui caía no whitelabel error padrão do Spring, potencialmente
  * vazando stack trace (depende de {@code server.error.include-stacktrace}).
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @RestControllerAdvice
 public class RestExceptionHandler {

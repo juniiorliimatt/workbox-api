@@ -20,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
  * confirmado ({@code mfaEnabled=true}) depois de {@link #verifyAndEnable} validar o
  * primeiro código — evita habilitar MFA com um segredo que o usuário nunca conseguiu
  * escanear/configurar corretamente no app autenticador.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Service
 public class MfaService {

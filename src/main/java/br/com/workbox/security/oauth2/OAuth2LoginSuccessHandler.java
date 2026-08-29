@@ -25,6 +25,10 @@ import org.springframework.stereotype.Component;
  * da API continua stateless via JWT, o OAuth2 é só mais uma forma de chegar até eles.
  * Provisiona o usuário automaticamente no primeiro login (role USER, senha aleatória
  * inutilizável — a conta só autentica via provider social).
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {

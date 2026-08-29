@@ -20,6 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * NPE (bug conhecido do Spring Test com {@code GenericFilterBean} fora da chain de
  * Security). Roda antes do JwtService pra que autenticação malformada/rejeitada também
  * saia com requestId no log.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 public class CorrelationIdFilter extends OncePerRequestFilter {
 

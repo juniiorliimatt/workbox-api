@@ -26,6 +26,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
+ */
+
 @Service
 public class UserApiService implements UserDetailsService {
 

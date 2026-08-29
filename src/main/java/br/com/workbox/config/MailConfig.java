@@ -14,6 +14,10 @@ import java.util.Properties;
  * configurado — a conexão só é tentada no envio, nunca na subida da
  * aplicação. Sem credenciais reais, o envio falha e é logado (ver
  * MailService), não derruba a request.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Configuration
 public class MailConfig {

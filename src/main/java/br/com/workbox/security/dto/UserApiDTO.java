@@ -5,6 +5,12 @@ import org.springframework.hateoas.RepresentationModel;
 
 import java.util.UUID;
 
+/**
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
+ */
+
 @Getter
 @Setter
 @Builder

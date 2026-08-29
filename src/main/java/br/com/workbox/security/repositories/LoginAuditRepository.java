@@ -6,5 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
+/**
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
+ */
+
 @Repository
 public interface LoginAuditRepository extends JpaRepository<LoginAudit, UUID> { }

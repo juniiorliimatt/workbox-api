@@ -17,6 +17,10 @@ import lombok.Setter;
  * a cadeia de rotação de um mesmo login — usado pra detecção de reuso: se um {@code jti}
  * já marcado {@code revokedAt} for reapresentado em {@code /api/auth/refresh}, é sinal
  * de token roubado (alguém usou uma cópia antiga), e a família inteira é revogada.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Getter
 @Setter

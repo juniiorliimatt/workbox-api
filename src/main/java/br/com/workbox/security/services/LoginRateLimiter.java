@@ -24,6 +24,10 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * rodam dezenas de logins no mesmo "IP" (MockMvc) dentro da mesma janela — sem isso o
  * limite de produção deixaria os testes flaky por ordem de execução. Ver
  * application-test.properties.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Component
 public class LoginRateLimiter {

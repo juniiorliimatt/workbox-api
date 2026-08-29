@@ -12,6 +12,10 @@ import org.hibernate.envers.RevisionEntity;
  * Revisão do Envers com quem fez a mudança — {@link RevisionListenerImpl} preenche
  * {@code username} a partir do SecurityContext, mesma fonte que {@code AuditorAwareImpl}
  * usa pra createdBy/updatedBy.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Getter
 @Setter

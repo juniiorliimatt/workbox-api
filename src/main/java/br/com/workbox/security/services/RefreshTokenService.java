@@ -15,6 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
  * roda o inicializador de campo {@code logger} de {@code GenericFilterBean}, e quebra
  * {@code Filter.init(FilterConfig)} com NPE assim que o container (ou o MockMvc em
  * teste) inicializa o filtro. Serviço plano (sem herança de Filter) não tem esse problema.
+ *
+ * @author CLAUDE-CODE
+ * @author Junior Lima - oojuniin@outlook.com
+ * @since 29-08-2026
  */
 @Service
 public class RefreshTokenService {
