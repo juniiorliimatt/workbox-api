@@ -12,7 +12,7 @@ pro GitLab é replicado automaticamente via git hook. Ver
 
 | Camada | Tecnologia |
 |---|---|
-| Linguagem / runtime | Java 26 (toolchain Gradle) |
+| Linguagem / runtime | Java 25 LTS (toolchain Gradle) |
 | Framework | Spring Boot 3.5.16 |
 | Build | Gradle 9.7.1 |
 | Persistência | Spring Data JPA + Hibernate, Liquibase (migrations) |
@@ -166,7 +166,7 @@ que não existe, DTO que falta um campo) antes de qualquer lógica de negócio s
 
 Só a API neste artefato — `workbox-app` sobe separado (nativo ou em container próprio,
 ver [README raiz](../README.md#rodando-tudo-em-containers)). `Procfile`/
-`system.properties` configuram deploy estilo Heroku (JDK 26); `Dockerfile` (multi-stage,
+`system.properties` configuram deploy estilo Heroku (JDK 25); `Dockerfile` (multi-stage,
 non-root) pra deploy containerizado.
 
 ## Referências
