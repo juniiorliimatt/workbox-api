@@ -1,0 +1,436 @@
+openapi: 3.1.0
+info:
+  contact:
+    email: oojuniin@outlook.com
+    name: Junior Lima
+  description: "Contrato REST da Workbox API. Este documento é a fonte da verdade\
+    \ para qualquer client (frontend, agentes de IA) que consuma esta API — não assuma\
+    \ comportamento não descrito aqui."
+  title: Workbox API
+  version: 0.0.1
+servers:
+- description: Relativo ao host onde a API estiver publicada
+  url: /
+security:
+- bearer-jwt: []
+paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserApiLoginCredentialsDTO"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+          description: OK
+      tags:
+      - auth-controller
+  /api/auth/refresh:
+    post:
+      operationId: refresh
+      parameters:
+      - in: query
+        name: refreshToken
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+          description: OK
+      tags:
+      - auth-controller
+  /api/user/find-all:
+    get:
+      operationId: findAll_1
+      parameters:
+      - in: query
+        name: User API
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CollectionModelUserApiDTO"
+          description: OK
+      tags:
+      - user-api-controller
+  /api/user/pageable:
+    get:
+      operationId: findAll
+      parameters:
+      - in: query
+        name: pageable
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      - in: query
+        name: User API
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageUserApiDTO"
+          description: OK
+      tags:
+      - user-api-controller
+  /api/user/save:
+    post:
+      operationId: save
+      parameters:
+      - in: query
+        name: User API
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserApiInsertOrUpdateDTO"
+        required: true
+      responses:
+        "201":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserApiDTO"
+          description: Created
+      tags:
+      - user-api-controller
+  /api/user/update:
+    put:
+      operationId: update
+      parameters:
+      - in: query
+        name: User API
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserApiInsertOrUpdateDTO"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserApiDTO"
+          description: OK
+      tags:
+      - user-api-controller
+  /api/user/{id}:
+    delete:
+      operationId: delete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+      tags:
+      - user-api-controller
+    get:
+      operationId: findById
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: User API
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EntityModelUserApiDTO"
+          description: OK
+      tags:
+      - user-api-controller
+components:
+  schemas:
+    CollectionModelUserApiDTO:
+      type: object
+      properties:
+        _embedded:
+          type: object
+          properties:
+            userApiDTOList:
+              type: array
+              items:
+                $ref: "#/components/schemas/UserApiDTO"
+        _links:
+          $ref: "#/components/schemas/Links"
+    EntityModelUserApiDTO:
+      type: object
+      properties:
+        _links:
+          $ref: "#/components/schemas/Links"
+        enabled:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    GrantedAuthority:
+      type: object
+      properties:
+        authority:
+          type: string
+    Link:
+      type: object
+      properties:
+        deprecation:
+          type:
+          - string
+          - "null"
+        href:
+          type: string
+        hreflang:
+          type:
+          - string
+          - "null"
+        name:
+          type:
+          - string
+          - "null"
+        profile:
+          type:
+          - string
+          - "null"
+        templated:
+          type: boolean
+        title:
+          type:
+          - string
+          - "null"
+        type:
+          type:
+          - string
+          - "null"
+    Links:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/Link"
+    PageUserApiDTO:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserApiDTO"
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Pageable:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+        size:
+          type: integer
+          format: int32
+          minimum: 1
+        sort:
+          type: array
+          items:
+            type: string
+    PageableObject:
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        pageNumber:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        paged:
+          type: boolean
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        unpaged:
+          type: boolean
+    Role:
+      type: object
+      properties:
+        authority:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        id:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserApi"
+          uniqueItems: true
+      required:
+      - authority
+    SortObject:
+      type: object
+      properties:
+        empty:
+          type: boolean
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+    UserApi:
+      type: object
+      properties:
+        accountNonExpired:
+          type: boolean
+        accountNonLocked:
+          type: boolean
+        authorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrantedAuthority"
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        credentialsNonExpired:
+          type: boolean
+        enabled:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        isAccountNonExpired:
+          type: boolean
+        isAccountNonLocked:
+          type: boolean
+        isCredentialsNonExpired:
+          type: boolean
+        isEnabled:
+          type: boolean
+        password:
+          type: string
+          writeOnly: true
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+          uniqueItems: true
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        username:
+          type: string
+          maxLength: 50
+          minLength: 5
+      required:
+      - username
+    UserApiDTO:
+      type: object
+      properties:
+        _links:
+          $ref: "#/components/schemas/Links"
+        enabled:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    UserApiInsertOrUpdateDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        isEnabled:
+          type: boolean
+        password:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+          uniqueItems: true
+        username:
+          type: string
+    UserApiLoginCredentialsDTO:
+      type: object
+      properties:
+        password:
+          type: string
+        username:
+          type: string
+  securitySchemes:
+    bearer-jwt:
+      bearerFormat: JWT
+      name: bearer-jwt
+      scheme: bearer
+      type: http

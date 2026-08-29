@@ -1,8 +1,10 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.4'
-    id 'io.spring.dependency-management' version '1.1.6'
-    id "org.sonarqube" version "4.4.1.3373"
+    id "jacoco"
+    id 'org.springframework.boot' version '3.5.16'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id "org.sonarqube" version "7.4.0.8496"
+    id 'org.springdoc.openapi-gradle-plugin' version '1.9.0'
 }
 
 group = 'br.com.api'
@@ -10,8 +12,33 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(26)
     }
+}
+
+jacoco {
+    toolVersion = "0.8.15"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
+tasks.named('sonar') {
+    dependsOn(test)
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 configurations {
@@ -28,6 +55,19 @@ sonar {
     properties {
         property "sonar.projectKey", "oojuniin_apiv2"
         property "sonar.organization", "oojuniin"
+        property "sonar.gradle.skipCompile", "true"
+    }
+}
+
+// Contrato de API (OpenAPI) versionado no repositório — fonte da verdade para
+// qualquer client (frontend, agentes de IA) que consuma esta API.
+openApi {
+    apiDocsUrl.set("http://localhost:8080/v3/api-docs.yaml")
+    outputDir.set(file("$rootDir/openapi"))
+    outputFileName.set("openapi.yaml")
+    waitTimeInSeconds.set(30)
+    customBootRun {
+        args.set(["--spring.profiles.active=test"])
     }
 }
 
@@ -36,34 +76,27 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-authorization-server'
-//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-//    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-web-services'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.data:spring-data-envers'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
     implementation 'org.liquibase:liquibase-core'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
-
-    compileOnly 'org.projectlombok:lombok'
-
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql'
-
+    compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
-
