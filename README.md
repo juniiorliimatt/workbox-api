@@ -73,6 +73,25 @@ O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN`
 JWT via `POST /api/auth/login` (retorna `access_token` + `refresh_token`) e
 `POST /api/auth/refresh`. Endpoints protegidos exigem `Authorization: Bearer <token>`.
 
+| Endpoint | Auth | O quê |
+|---|---|---|
+| `POST /api/auth/login` | público | Rate limit 10/min por IP; 5 tentativas erradas trava a conta por 15min (auto-expira) |
+| `POST /api/auth/refresh` | público | Troca refresh token por novo access token |
+| `POST /api/auth/logout` | Bearer | Incrementa `tokenVersion` — revoga todo token emitido antes |
+| `GET /api/auth/me` | Bearer | Dados do usuário autenticado |
+| `PUT /api/auth/password` | Bearer | Troca de senha, exige a senha atual |
+| `POST /api/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único |
+| `POST /api/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
+| `GET/POST/PUT/DELETE /api/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
+
+**Login social** (Google) fica inativo até `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID`/`_CLIENT_SECRET`
+serem setados como variável de ambiente — sem isso, nem o bean existe, zero impacto na
+subida da aplicação.
+
+Toda tentativa de login (sucesso ou falha) fica em `login_audit`. Mudanças em `UserApi`/
+`Role` ficam versionadas via Hibernate Envers (`users_api_aud`/`roles_aud` + `rev_info`,
+quem mudou vem do `SecurityContext`).
+
 ## Contrato de API (OpenAPI)
 
 `openapi/openapi.yaml` é o contrato REST versionado desta API — fonte da verdade para
