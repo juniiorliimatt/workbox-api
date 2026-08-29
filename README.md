@@ -110,6 +110,33 @@ intencionalmente os beans de segurança (`spring.main.allow-bean-definition-over
 no profile `test`) para isolar os testes de controller do fluxo real de
 autenticação/DB.
 
+### BDD com Cucumber — fluxo de implementação
+
+`./gradlew test` já roda os `.feature` junto (JUnit Platform descobre `RunCucumberTest`
+via `@Suite`/`@IncludeEngines("cucumber")`, sem task separada). Exemplo real:
+[`authentication.feature`](src/test/resources/features/authentication.feature) +
+[`AuthenticationSteps.java`](src/test/java/br/com/workbox/steps/AuthenticationSteps.java).
+
+Ordem de implementação — outside-in, feature primeiro, produção por último:
+
+```mermaid
+flowchart TD
+    A["1. Escrever o .feature (Gherkin)<br/>cenário de negócio, sem código Java"] --> B["2. ./gradlew test<br/>Cucumber acusa 'Undefined step'<br/>(sugere a assinatura do método)"]
+    B --> C["3. Implementar os Step Definitions<br/>(@Dado/@Quando/@Então)"]
+    C --> D{Compila?}
+    D -- não --> E["4. Implementar produção mínima<br/>(entidade/serviço/controller)<br/>só o suficiente pra compilar"]
+    E --> D
+    D -- sim --> F["5. ./gradlew test de novo<br/>roda, mas falha na asserção<br/>(vermelho pela razão certa)"]
+    F --> G["6. Implementar a regra de negócio real"]
+    G --> H["7. ./gradlew test → verde"]
+    H --> I["8. Refatorar mantendo verde"]
+```
+
+Por que nessa ordem: o `.feature` fixa o comportamento esperado *antes* de qualquer
+linha de produção existir — força a implementação a servir o cenário, não o contrário.
+Os passos 3→5 costumam expor rapidamente lacunas de design (step precisa de um método
+que não existe, DTO que falta um campo) antes de qualquer lógica de negócio ser escrita.
+
 ## CI/CD
 
 `.gitlab-ci.yml`: `test` (build + testes) → `contract-drift-check` (contrato em dia) →
