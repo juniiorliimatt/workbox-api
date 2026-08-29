@@ -1,7 +1,9 @@
 package br.com.workbox.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
@@ -18,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 public class AuthenticationSteps {
 
@@ -33,7 +36,8 @@ public class AuthenticationSteps {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private MvcResult result;
+    @Autowired
+    private HttpResultContext context;
 
     @Dado("um usuário habilitado {string} com senha {string}")
     public void umUsuarioHabilitadoComSenha(String username, String rawPassword) {
@@ -47,25 +51,84 @@ public class AuthenticationSteps {
 
     @Quando("eu tento autenticar com usuário {string} e senha {string}")
     public void euTentoAutenticarComUsuarioESenha(String username, String password) throws Exception {
-        final var body = objectMapper.writeValueAsString(
-                new br.com.workbox.security.dto.UserApiLoginCredentialsDTO(username, password));
+        context.setResult(login(username, password));
+        capturarAccessTokenSeSucesso();
+    }
 
-        this.result = mockMvc.perform(post("/api/auth/login")
+    @Quando("eu tento autenticar sem sucesso {int} vezes com usuário {string} e senha errada")
+    public void euTentoAutenticarSemSucessoVezes(int vezes, String username) throws Exception {
+        for (int i = 0; i < vezes; i++) {
+            context.setResult(login(username, "senha-definitivamente-errada"));
+        }
+    }
+
+    @Quando("eu faço logout")
+    public void euFacoLogout() throws Exception {
+        context.setResult(mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer " + context.getAccessToken()))
+                .andReturn());
+    }
+
+    @Quando("eu consulto meus dados")
+    public void euConsultoMeusDados() throws Exception {
+        context.setResult(mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + context.getAccessToken()))
+                .andReturn());
+    }
+
+    @Quando("eu tento trocar minha senha de {string} para {string}")
+    public void euTentoTrocarMinhaSenha(String senhaAtual, String novaSenha) throws Exception {
+        final var body = objectMapper.writeValueAsString(
+                new br.com.workbox.security.dto.ChangePasswordDTO(senhaAtual, novaSenha));
+
+        context.setResult(mockMvc.perform(put("/api/auth/password")
+                        .header("Authorization", "Bearer " + context.getAccessToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andReturn();
+                .andReturn());
     }
 
     @Então("a resposta é {string}")
     public void aRespostaE(String expectedStatus) {
-        final var actual = HttpStatus.valueOf(result.getResponse().getStatus());
+        final var actual = HttpStatus.valueOf(context.getResult().getResponse().getStatus());
         assertThat(actual).isEqualTo(HttpStatus.valueOf(expectedStatus));
     }
 
     @Então("um access_token é retornado")
     public void umAccessTokenERetornado() throws Exception {
-        final JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
+        final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
         assertThat(json.get("access_token").asText()).isNotBlank();
+    }
+
+    @Então("recebo meu perfil com username {string}")
+    public void reboMeuPerfilComUsername(String username) throws Exception {
+        assertThat(context.getResult().getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
+        final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
+        assertThat(json.get("username").asText()).isEqualTo(username);
+    }
+
+    @Então("minhas requisições autenticadas com o token antigo são rejeitadas")
+    public void minhasRequisicoesComTokenAntigoSaoRejeitadas() throws Exception {
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + context.getAccessToken()))
+                .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+    }
+
+    private MvcResult login(String username, String password) throws Exception {
+        final var body = objectMapper.writeValueAsString(
+                new br.com.workbox.security.dto.UserApiLoginCredentialsDTO(username, password));
+
+        return mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn();
+    }
+
+    private void capturarAccessTokenSeSucesso() throws Exception {
+        if (context.getResult().getResponse().getStatus() != HttpStatus.OK.value()) {
+            return;
+        }
+        final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
+        context.setAccessToken(json.get("access_token").asText());
     }
 
     private void criarUsuario(String username, String rawPassword, boolean enabled) {
