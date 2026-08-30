@@ -105,16 +105,19 @@ public class AuthController {
      */
     @PostMapping("/mfa/login")
     public ResponseEntity<?> mfaLogin(@RequestBody @Valid MfaLoginDTO dto, HttpServletRequest request) {
-        if (!loginRateLimiter.isAllowed("mfa-login:" + clientIp(request))) {
+        final var ip = clientIp(request);
+        if (!loginRateLimiter.isAllowed("mfa-login:" + ip)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts, try again later"));
         }
 
         final var user = jwtService.validateMfaChallengeToken(dto.mfaToken());
         if (!mfaService.verifyCode(user, dto.code())) {
+            loginAuditService.record(user.getUsername(), false, "mfa_invalid_code", ip);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid MFA code"));
         }
+        loginAuditService.record(user.getUsername(), true, "mfa_verified", ip);
         return ResponseEntity.ok(issueTokenPair(user));
     }
 

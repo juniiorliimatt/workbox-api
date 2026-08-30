@@ -133,7 +133,7 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("código inválido responde 401")
+        @DisplayName("código inválido responde 401 e audita a falha")
         void invalidCode() {
             final var user = user(true);
             when(jwtService.validateMfaChallengeToken("tok")).thenReturn(user);
@@ -142,10 +142,11 @@ class AuthControllerTest {
             final var response = controller.mfaLogin(new MfaLoginDTO("tok", "000000"), new MockHttpServletRequest());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            verify(loginAuditService).record(user.getUsername(), false, "mfa_invalid_code", "127.0.0.1");
         }
 
         @Test
-        @DisplayName("código válido emite access+refresh")
+        @DisplayName("código válido emite access+refresh e audita o sucesso")
         void validCodeIssuesTokens() {
             final var user = user(true);
             when(jwtService.validateMfaChallengeToken("tok")).thenReturn(user);
@@ -157,6 +158,7 @@ class AuthControllerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isEqualTo(Map.of("access_token", "access", "refresh_token", "refresh"));
+            verify(loginAuditService).record(user.getUsername(), true, "mfa_verified", "127.0.0.1");
         }
     }
 
