@@ -53,7 +53,8 @@ public class RoleManagementSteps {
         final var role = Role.builder().authority(authority).build();
 
         final var user = UserApi.builder()
-                .username(username)
+                .socialName(username)
+                .email(username + "@example.com")
                 .password(passwordEncoder.encode(rawPassword))
                 .isEnabled(true)
                 .isAccountNonExpired(true)

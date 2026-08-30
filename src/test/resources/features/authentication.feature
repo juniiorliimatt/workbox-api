@@ -40,7 +40,7 @@ Funcionalidade: Autenticação de usuário
     Dado um usuário habilitado "frank01" com senha "S3nh@Forte!"
     E eu tento autenticar com usuário "frank01" e senha "S3nh@Forte!"
     Quando eu consulto meus dados
-    Então recebo meu perfil com username "frank01"
+    Então recebo meu perfil com nome "frank01"
 
   Cenário: Troca de senha exige a senha atual correta
     Dado um usuário habilitado "grace02" com senha "S3nh@Forte!"

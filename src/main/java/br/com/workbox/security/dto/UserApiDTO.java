@@ -20,7 +20,7 @@ import java.util.UUID;
 public class UserApiDTO extends RepresentationModel<UserApiDTO> {
 
     private UUID id;
-    private String username;
+    private String socialName;
     private String email;
     private boolean enabled;
 

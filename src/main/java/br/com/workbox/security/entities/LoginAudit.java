@@ -29,7 +29,7 @@ public class LoginAudit {
     private UUID id;
 
     @Column(nullable = false)
-    private String username;
+    private String email;
 
     @Column(nullable = false)
     private boolean successful;
@@ -41,10 +41,10 @@ public class LoginAudit {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    public static LoginAudit of(String username, boolean successful, String reason, String ipAddress) {
+    public static LoginAudit of(String email, boolean successful, String reason, String ipAddress) {
         return LoginAudit.builder()
                 .id(UUID.randomUUID())
-                .username(username)
+                .email(email)
                 .successful(successful)
                 .reason(reason)
                 .ipAddress(ipAddress)

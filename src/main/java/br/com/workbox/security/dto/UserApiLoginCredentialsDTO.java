@@ -6,4 +6,4 @@ package br.com.workbox.security.dto;
  * @since 29-08-2026
  */
 
-public record UserApiLoginCredentialsDTO(String username, String password) { }
+public record UserApiLoginCredentialsDTO(String email, String password) { }

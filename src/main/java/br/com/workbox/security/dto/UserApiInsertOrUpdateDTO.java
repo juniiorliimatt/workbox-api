@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 
 public record UserApiInsertOrUpdateDTO(UUID id,
-                                       String username,
+                                       String socialName,
                                        String password,
                                        String email,
                                        boolean isEnabled,

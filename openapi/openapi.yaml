@@ -441,7 +441,7 @@ components:
         id:
           type: string
           format: uuid
-        username:
+        socialName:
           type: string
     ForgotPasswordDTO:
       type: object
@@ -665,6 +665,7 @@ components:
         email:
           type: string
           format: email
+          minLength: 1
         enabled:
           type: boolean
         failedLoginAttempts:
@@ -697,6 +698,10 @@ components:
           items:
             $ref: "#/components/schemas/Role"
           uniqueItems: true
+        socialName:
+          type: string
+          maxLength: 120
+          minLength: 2
         tokenVersion:
           type: integer
           format: int64
@@ -705,12 +710,9 @@ components:
           format: date-time
         updatedBy:
           type: string
-        username:
-          type: string
-          maxLength: 50
-          minLength: 5
       required:
-      - username
+      - email
+      - socialName
     UserApiDTO:
       type: object
       properties:
@@ -723,7 +725,7 @@ components:
         id:
           type: string
           format: uuid
-        username:
+        socialName:
           type: string
     UserApiInsertOrUpdateDTO:
       type: object
@@ -742,14 +744,14 @@ components:
           items:
             $ref: "#/components/schemas/Role"
           uniqueItems: true
-        username:
+        socialName:
           type: string
     UserApiLoginCredentialsDTO:
       type: object
       properties:
-        password:
+        email:
           type: string
-        username:
+        password:
           type: string
     UserApiRegisterDTO:
       type: object
@@ -762,14 +764,14 @@ components:
           type: string
           maxLength: 100
           minLength: 8
-        username:
+        socialName:
           type: string
-          maxLength: 50
-          minLength: 5
+          maxLength: 120
+          minLength: 2
       required:
       - email
       - password
-      - username
+      - socialName
   securitySchemes:
     bearer-jwt:
       bearerFormat: JWT

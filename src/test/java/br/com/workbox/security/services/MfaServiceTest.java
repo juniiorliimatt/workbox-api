@@ -32,7 +32,7 @@ class MfaServiceTest {
     }
 
     private UserApi user() {
-        return UserApi.builder().id(UUID.randomUUID()).username("alice").password("hash").build();
+        return UserApi.builder().id(UUID.randomUUID()).socialName("Alice").email("alice@example.com").password("hash").build();
     }
 
     private String currentCode(String secret) throws Exception {
@@ -47,7 +47,7 @@ class MfaServiceTest {
         final var result = mfaService.enroll(user);
 
         assertThat(result.secret()).isNotBlank();
-        assertThat(result.otpAuthUri()).startsWith("otpauth://totp/alice?secret=" + result.secret());
+        assertThat(result.otpAuthUri()).startsWith("otpauth://totp/alice%40example.com?secret=" + result.secret());
         assertThat(user.getMfaSecret()).isEqualTo(result.secret());
         assertThat(user.getMfaEnabled()).isFalse();
         verify(userApiRepository).save(user);

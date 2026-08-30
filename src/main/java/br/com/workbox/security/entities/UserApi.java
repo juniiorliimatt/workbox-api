@@ -1,6 +1,7 @@
 package br.com.workbox.security.entities;
 
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -63,13 +64,12 @@ public class UserApi implements UserDetails {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Unicidade real é um índice único parcial (WHERE deleted_at IS NULL, ver
-    // changelog v0.0.2) — exclusão é lógica, então UNIQUE bruto na coluna impediria
-    // reusar o username de um usuário deletado. Não declarar unique=true aqui.
-    @Size(min = 5, max = 50)
+    // Nome social — como o usuário quer ser chamado, usado pro front exibir. Livre, não é
+    // identificador de login e não precisa ser único.
+    @Size(min = 2, max = 120)
     @Column(nullable = false)
-    @NotBlank(message = "Username is mandatory")
-    private String username;
+    @NotBlank(message = "Social name is mandatory")
+    private String socialName;
 
     @Column(nullable = false)
     @NotBlank(message = "password is mandatory")
@@ -77,7 +77,11 @@ public class UserApi implements UserDetails {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
-    // Mesma razão do username acima: unicidade é índice parcial, não coluna.
+    // Identificador de login (ver getUsername() abaixo) — unicidade real é um índice
+    // único parcial (WHERE deleted_at IS NULL, ver changelog v0.0.2), exclusão lógica
+    // impediria reusar o email de um usuário deletado com UNIQUE bruto na coluna.
+    @Column(nullable = false)
+    @NotBlank(message = "Email is mandatory")
     @Email(message = "Email must be valid")
     private String email;
 
@@ -135,7 +139,7 @@ public class UserApi implements UserDetails {
     private String updatedBy;
 
     public UserApi(UserApiInsertOrUpdateDTO dto) {
-        this.username = dto.username();
+        this.socialName = dto.socialName();
         this.password = dto.password();
         this.email = dto.email();
         this.isEnabled = dto.isEnabled();
@@ -146,6 +150,19 @@ public class UserApi implements UserDetails {
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority(role.getAuthority()))
                 .toList();
+    }
+
+    /**
+     * Identificador de autenticação do Spring Security — login é por email, não por
+     * username. {@code @JsonIgnore} porque Jackson trata todo getter público como
+     * propriedade serializável, e sem isso esse método sintético do contrato
+     * {@link UserDetails} vazava um campo "username" duplicando o valor de email em
+     * qualquer serialização da entidade (ex.: schema OpenAPI).
+     */
+    @Override
+    @JsonIgnore
+    public String getUsername() {
+        return email;
     }
 
     @PrePersist

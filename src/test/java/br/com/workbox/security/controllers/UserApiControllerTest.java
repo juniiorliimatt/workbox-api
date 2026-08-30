@@ -36,7 +36,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @MockBean(JpaMetamodelMappingContext.class)
 class UserApiControllerTest {
 
-    private static final String USERNAME = "username";
+    private static final String NAME = "Test User";
+    private static final String EMAIL = "user@example.com";
     private static final String PASSWORD = "password";
 
     private UUID id;
@@ -60,7 +61,8 @@ class UserApiControllerTest {
         this.id = UUID.randomUUID();
         this.userApi = UserApi.builder()
                 .id(this.id)
-                .username(USERNAME)
+                .socialName(NAME)
+                .email(EMAIL)
                 .password(PASSWORD)
                 .isEnabled(true)
                 .isAccountNonExpired(true)
@@ -74,24 +76,24 @@ class UserApiControllerTest {
     @Test
     @DisplayName(value = "Get UserById")
     void testGetUserApiById() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getEmail(), userApi.getIsEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled());
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
 
         mockMvc.perform(get("/api/v1/user/" + this.id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/hal+json"))
-                .andExpect(jsonPath("$.username").value(USERNAME));
+                .andExpect(jsonPath("$.socialName").value(NAME));
     }
 
     @Test
     @DisplayName(value = "Save user — Location header aponta pro path real do recurso")
     void testSaveUserApi() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getUsername(), userApi.getEmail(), userApi.getIsEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled());
         // Role sem o back-reference `users` — só pra não estourar em recursão infinita na
         // serialização JSON do corpo da requisição (Role não tem @JsonIgnore/@JsonBackReference
         // em `users`, e UserApi.roles -> Role.users -> UserApi de novo).
         final var roleForRequest = Role.builder().id(1L).authority("TEST").build();
-        final var insertDto = new UserApiInsertOrUpdateDTO(null, USERNAME, PASSWORD, null, true, Set.of(roleForRequest));
+        final var insertDto = new UserApiInsertOrUpdateDTO(null, NAME, PASSWORD, EMAIL, true, Set.of(roleForRequest));
         when(userApiService.save(any(UserApiInsertOrUpdateDTO.class))).thenReturn(userApiDto);
 
         mockMvc.perform(post("/api/v1/user/save")

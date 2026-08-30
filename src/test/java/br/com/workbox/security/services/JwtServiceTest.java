@@ -52,10 +52,11 @@ class JwtServiceTest {
         SecurityContextHolder.clearContext();
     }
 
-    private UserApi enabledUser(String username) {
+    private UserApi enabledUser(String email) {
         return UserApi.builder()
                 .id(UUID.randomUUID())
-                .username(username)
+                .socialName("Test User")
+                .email(email)
                 .password("hash")
                 .isEnabled(true)
                 .isAccountNonExpired(true)

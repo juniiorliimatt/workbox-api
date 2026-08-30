@@ -76,8 +76,8 @@ public class AuthController {
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many login attempts, try again later"));
         }
 
-        final var result = userApiService.attemptLogin(dto.username(), dto.password());
-        loginAuditService.record(dto.username(), result.success(), result.failureReason(), ip);
+        final var result = userApiService.attemptLogin(dto.email(), dto.password());
+        loginAuditService.record(dto.email(), result.success(), result.failureReason(), ip);
 
         if (!result.success()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

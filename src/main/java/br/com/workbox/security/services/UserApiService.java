@@ -54,10 +54,11 @@ public class UserApiService implements UserDetailsService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /** Nome do método é o contrato de {@link UserDetailsService} — o identificador recebido é o email, não um username. */
     @Override
-    public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
-        logger.info("load by username");
-        return userApiRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(final String email) throws UsernameNotFoundException {
+        logger.info("load by email");
+        return userApiRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
     }
 
@@ -83,8 +84,8 @@ public class UserApiService implements UserDetailsService {
     }
 
     @Transactional(readOnly = true)
-    public UserApiDTO me(final String username) {
-        final var user = (UserApi) loadUserByUsername(username);
+    public UserApiDTO me(final String email) {
+        final var user = (UserApi) loadUserByUsername(email);
         return toDto(user);
     }
 
@@ -107,15 +108,12 @@ public class UserApiService implements UserDetailsService {
     /**
      * Auto-cadastro público: diferente de {@link #save}, nunca aceita roles do
      * chamador — sempre atribui USER, prevenindo escalonamento de privilégio via payload
-     * (BOLA/mass assignment, OWASP API3:2023). Unicidade é checada aqui pra devolver
-     * mensagem específica (username x email); o índice único parcial no banco continua
-     * como rede de segurança contra corrida entre o check e o insert.
+     * (BOLA/mass assignment, OWASP API3:2023). Unicidade de email é checada aqui pra
+     * devolver mensagem específica; o índice único parcial no banco continua como rede de
+     * segurança contra corrida entre o check e o insert.
      */
     @Transactional
     public UserApiDTO register(final UserApiRegisterDTO dto) {
-        if (userApiRepository.findByUsername(dto.username()).isPresent()) {
-            throw new UserAlreadyExistsException("Username already in use");
-        }
         if (userApiRepository.findByEmail(dto.email()).isPresent()) {
             throw new UserAlreadyExistsException("Email already in use");
         }
@@ -123,7 +121,7 @@ public class UserApiService implements UserDetailsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
         final var user = new UserApi();
-        user.setUsername(dto.username());
+        user.setSocialName(dto.socialName());
         user.setEmail(dto.email());
         user.setPassword(passwordEncoder.encode(dto.password()));
         user.setIsEnabled(true);
@@ -137,7 +135,7 @@ public class UserApiService implements UserDetailsService {
     public UserApiDTO update(final UserApiInsertOrUpdateDTO dto) {
         logger.info("update user");
         final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
-        user.setUsername(dto.username());
+        user.setSocialName(dto.socialName());
         user.setPassword(passwordEncoder.encode(dto.password()));
         user.setEmail(dto.email());
         user.setIsEnabled(dto.isEnabled());
@@ -165,10 +163,10 @@ public class UserApiService implements UserDetailsService {
      * (o motivo detalhado é só pra log/auditoria, nunca pra resposta HTTP).
      */
     @Transactional
-    public LoginAttemptResult attemptLogin(final String username, final String rawPassword) {
+    public LoginAttemptResult attemptLogin(final String email, final String rawPassword) {
         final UserApi user;
         try {
-            user = (UserApi) loadUserByUsername(username);
+            user = (UserApi) loadUserByUsername(email);
         } catch (UsernameNotFoundException e) {
             return LoginAttemptResult.failure("unknown_user");
         }
@@ -201,15 +199,15 @@ public class UserApiService implements UserDetailsService {
 
     /** Bump de tokenVersion — invalida todo access/refresh token emitido antes disso. */
     @Transactional
-    public void logout(final String username) {
-        final var user = (UserApi) loadUserByUsername(username);
+    public void logout(final String email) {
+        final var user = (UserApi) loadUserByUsername(email);
         user.setTokenVersion(user.getTokenVersion() + 1);
         userApiRepository.save(user);
     }
 
     @Transactional
-    public void changePassword(final String username, final ChangePasswordDTO dto) {
-        final var user = (UserApi) loadUserByUsername(username);
+    public void changePassword(final String email, final ChangePasswordDTO dto) {
+        final var user = (UserApi) loadUserByUsername(email);
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             throw new LoginInvalidException("Current password is incorrect");
         }
@@ -226,6 +224,6 @@ public class UserApiService implements UserDetailsService {
     }
 
     private UserApiDTO toDto(final UserApi user) {
-        return new UserApiDTO(user.getId(), user.getUsername(), user.getEmail(), user.isEnabled());
+        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled());
     }
 }

@@ -73,11 +73,16 @@ O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN`
 Todas as rotas são versionadas em path (`/api/v1/...`) desde o início — evita quebrar
 clients existentes no dia em que um contrato precisar de uma versão nova em paralelo.
 
+Login é sempre por **email** (não username) — `UserApi.getUsername()` (contrato do Spring
+Security) devolve o email. `socialName` é só um campo de exibição livre ("como quer ser
+chamado", usado pelo front), sem unicidade.
+
 JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 `POST /api/v1/auth/refresh`. Endpoints protegidos exigem `Authorization: Bearer <token>`.
 
 | Endpoint | Auth | O quê |
 |---|---|---|
+| `POST /api/v1/auth/register` | público | Auto-cadastro — sempre atribui a role USER no servidor, nunca aceita role do payload |
 | `POST /api/v1/auth/login` | público | Rate limit 10/min por IP; 5 tentativas erradas trava a conta por 15min (auto-expira) |
 | `POST /api/v1/auth/refresh` | público | Rotação de refresh token (uso único) — reapresentar um já usado revoga a família inteira (reuso = token roubado) |
 | `POST /api/v1/auth/logout` | Bearer | Incrementa `tokenVersion` — revoga todo token emitido antes |

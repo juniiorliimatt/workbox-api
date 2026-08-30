@@ -59,8 +59,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                          final Authentication authentication) throws IOException {
         final var oAuth2User = (OAuth2User) authentication.getPrincipal();
         final String email = oAuth2User.getAttribute("email");
+        final String socialName = oAuth2User.getAttribute("name");
 
-        final var user = userApiRepository.findByEmail(email).orElseGet(() -> provisionUser(email));
+        final var user = userApiRepository.findByEmail(email).orElseGet(() -> provisionUser(email, socialName));
 
         final var accessToken = jwtService.generateToken(user);
         final var refreshToken = jwtService.issueRefreshToken(user);
@@ -71,14 +72,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(redirectUrl);
     }
 
-    private UserApi provisionUser(final String email) {
+    private UserApi provisionUser(final String email, final String socialName) {
         final var defaultRole = roleRepository.findAll().stream()
                 .filter(role -> DEFAULT_ROLE.equals(role.getAuthority()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Default role USER not found — seed data missing"));
 
         final var user = UserApi.builder()
-                .username(email)
+                .socialName(socialName != null && !socialName.isBlank() ? socialName : email)
                 .email(email)
                 .password(passwordEncoder.encode(randomUnusablePassword()))
                 .isEnabled(true)

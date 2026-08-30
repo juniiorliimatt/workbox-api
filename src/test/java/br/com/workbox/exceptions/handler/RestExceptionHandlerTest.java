@@ -78,7 +78,7 @@ class RestExceptionHandlerTest {
     @DisplayName("MethodArgumentNotValidException vira 400 com os errors")
     void methodArgumentNotValidException() throws NoSuchMethodException {
         final var bindingResult = mock(BindingResult.class);
-        final var fieldError = new org.springframework.validation.FieldError("dto", "username", "must not be blank");
+        final var fieldError = new org.springframework.validation.FieldError("dto", "email", "must not be blank");
         when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
         final var methodParameter = new MethodParameter(
                 DummyValidatedEndpoint.class.getDeclaredMethod("handle", String.class), 0);
@@ -90,7 +90,7 @@ class RestExceptionHandlerTest {
         @SuppressWarnings("unchecked")
         final var errors = (List<Map<String, String>>) response.getProperties().get("errors");
         assertThat(errors).hasSize(1);
-        assertThat(errors.get(0).get("field")).isEqualTo("username");
+        assertThat(errors.get(0).get("field")).isEqualTo("email");
     }
 
     @Test
@@ -98,7 +98,7 @@ class RestExceptionHandlerTest {
     void constraintViolationException() {
         final ConstraintViolation<?> violation = mock(ConstraintViolation.class);
         final var path = mock(Path.class);
-        when(path.toString()).thenReturn("username");
+        when(path.toString()).thenReturn("email");
         when(violation.getPropertyPath()).thenReturn(path);
         when(violation.getMessage()).thenReturn("must not be blank");
         final Set<ConstraintViolation<?>> violations = Set.of(violation);
@@ -110,7 +110,7 @@ class RestExceptionHandlerTest {
         @SuppressWarnings("unchecked")
         final var errors = (List<Map<String, String>>) response.getProperties().get("errors");
         assertThat(errors).hasSize(1);
-        assertThat(errors.get(0).get("field")).isEqualTo("username");
+        assertThat(errors.get(0).get("field")).isEqualTo("email");
     }
 
     @Test
@@ -128,12 +128,12 @@ class RestExceptionHandlerTest {
     @DisplayName("DataIntegrityViolationException vira 409 com mensagem genérica — nunca ecoa detalhe de schema")
     void dataIntegrityViolationUsesGenericMessage() {
         final var response = handler.handleDataIntegrityViolationException(
-                new DataIntegrityViolationException("duplicate key value violates unique constraint \"users_api_username_key\""),
+                new DataIntegrityViolationException("duplicate key value violates unique constraint \"idx_users_api_email_active\""),
                 request);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(response.getDetail()).isEqualTo("Data integrity violation");
-        assertThat(response.getDetail()).doesNotContain("users_api_username_key");
+        assertThat(response.getDetail()).doesNotContain("idx_users_api_email_active");
     }
 
     @Test

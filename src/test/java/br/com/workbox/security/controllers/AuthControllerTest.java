@@ -51,7 +51,7 @@ class AuthControllerTest {
     }
 
     private UserApi user(boolean mfaEnabled) {
-        return UserApi.builder().id(UUID.randomUUID()).username("alice").password("hash")
+        return UserApi.builder().id(UUID.randomUUID()).socialName("Alice").email("alice@example.com").password("hash")
                 .isEnabled(true).isAccountNonExpired(true).isAccountNonLocked(true).isCredentialsNonExpired(true)
                 .tokenVersion(0L).mfaEnabled(mfaEnabled).build();
     }
@@ -93,7 +93,7 @@ class AuthControllerTest {
         void rateLimited() {
             when(loginRateLimiter.isAllowed(anyString())).thenReturn(false);
 
-            final var response = controller.login(new UserApiLoginCredentialsDTO("alice", "x"), new MockHttpServletRequest());
+            final var response = controller.login(new UserApiLoginCredentialsDTO("alice@example.com", "x"), new MockHttpServletRequest());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         }
@@ -102,10 +102,10 @@ class AuthControllerTest {
         @DisplayName("conta com MFA habilitado responde mfa_required em vez dos tokens")
         void mfaRequired() {
             final var user = user(true);
-            when(userApiService.attemptLogin("alice", "x")).thenReturn(br.com.workbox.security.services.LoginAttemptResult.success(user));
+            when(userApiService.attemptLogin("alice@example.com", "x")).thenReturn(br.com.workbox.security.services.LoginAttemptResult.success(user));
             when(jwtService.issueMfaChallengeToken(user)).thenReturn("mfa-token");
 
-            final var response = controller.login(new UserApiLoginCredentialsDTO("alice", "x"), new MockHttpServletRequest());
+            final var response = controller.login(new UserApiLoginCredentialsDTO("alice@example.com", "x"), new MockHttpServletRequest());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             @SuppressWarnings("unchecked")
@@ -196,8 +196,8 @@ class AuthControllerTest {
         void enroll() {
             final var user = user(false);
             final var authentication = mock(Authentication.class);
-            when(authentication.getName()).thenReturn("alice");
-            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            when(authentication.getName()).thenReturn("alice@example.com");
+            when(userApiService.loadUserByUsername("alice@example.com")).thenReturn(user);
             final var enrollResult = new MfaEnrollResponseDTO("secret", "otpauth://...");
             when(mfaService.enroll(user)).thenReturn(enrollResult);
 
@@ -211,8 +211,8 @@ class AuthControllerTest {
         void verifyMfaEndpoint() {
             final var user = user(false);
             final var authentication = mock(Authentication.class);
-            when(authentication.getName()).thenReturn("alice");
-            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            when(authentication.getName()).thenReturn("alice@example.com");
+            when(userApiService.loadUserByUsername("alice@example.com")).thenReturn(user);
 
             final var response = controller.verifyMfa(authentication, new MfaCodeDTO("123456"));
 
@@ -225,8 +225,8 @@ class AuthControllerTest {
         void disable() {
             final var user = user(true);
             final var authentication = mock(Authentication.class);
-            when(authentication.getName()).thenReturn("alice");
-            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            when(authentication.getName()).thenReturn("alice@example.com");
+            when(userApiService.loadUserByUsername("alice@example.com")).thenReturn(user);
 
             final var response = controller.disableMfa(authentication, new MfaCodeDTO("123456"));
 

@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Size;
  * @since 30-08-2026
  */
 
-public record UserApiRegisterDTO(@NotBlank(message = "Username is mandatory")
-                                  @Size(min = 5, max = 50)
-                                  String username,
+public record UserApiRegisterDTO(@NotBlank(message = "Social name is mandatory")
+                                  @Size(min = 2, max = 120)
+                                  String socialName,
 
                                   @NotBlank(message = "Email is mandatory")
                                   @Email(message = "Email must be valid")

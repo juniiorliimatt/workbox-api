@@ -49,7 +49,7 @@ public class PasswordRecoverySteps {
     public void umUsuarioHabilitadoComSenhaEEmail(String username, String rawPassword, String email) {
         final var role = Role.builder().authority("USER").build();
         final var user = UserApi.builder()
-                .username(username)
+                .socialName(username)
                 .password(passwordEncoder.encode(rawPassword))
                 .email(email)
                 .isEnabled(true)
@@ -93,7 +93,7 @@ public class PasswordRecoverySteps {
 
     @Então("eu consigo logar com usuário {string} e senha {string}")
     public void euConsigoLogarComUsuarioESenha(String username, String password) throws Exception {
-        final var body = objectMapper.writeValueAsString(new UserApiLoginCredentialsDTO(username, password));
+        final var body = objectMapper.writeValueAsString(new UserApiLoginCredentialsDTO(username + "@example.com", password));
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
