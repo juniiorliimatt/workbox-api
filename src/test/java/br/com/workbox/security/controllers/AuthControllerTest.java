@@ -10,6 +10,7 @@ import br.com.workbox.security.dto.MfaCodeDTO;
 import br.com.workbox.security.dto.MfaEnrollResponseDTO;
 import br.com.workbox.security.dto.MfaLoginDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
+import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.LoginAuditService;
@@ -53,6 +54,34 @@ class AuthControllerTest {
         return UserApi.builder().id(UUID.randomUUID()).username("alice").password("hash")
                 .isEnabled(true).isAccountNonExpired(true).isAccountNonLocked(true).isCredentialsNonExpired(true)
                 .tokenVersion(0L).mfaEnabled(mfaEnabled).build();
+    }
+
+    @Nested
+    @DisplayName("register")
+    class Register {
+
+        @Test
+        @DisplayName("rate limit excedido responde 429")
+        void rateLimited() {
+            when(loginRateLimiter.isAllowed(anyString())).thenReturn(false);
+
+            final var response = controller.register(new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!"), new MockHttpServletRequest());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        @Test
+        @DisplayName("cadastro válido delega ao UserApiService e responde 201")
+        void createsUser() {
+            final var dto = new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!");
+            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true);
+            when(userApiService.register(dto)).thenReturn(created);
+
+            final var response = controller.register(dto, new MockHttpServletRequest());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(response.getBody()).isEqualTo(created);
+        }
     }
 
     @Nested

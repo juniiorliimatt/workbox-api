@@ -67,7 +67,7 @@ public class SecurityConfig {
 
         httpSecurity.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh",
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                         "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/mfa/login").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()

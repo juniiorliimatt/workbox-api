@@ -2,9 +2,11 @@ package br.com.workbox.security.services;
 
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.exceptions.UserAlreadyExistsException;
 import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
+import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.repositories.RoleRepository;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -97,6 +100,35 @@ public class UserApiService implements UserDetailsService {
         final var user = new UserApi(dto);
         user.setRoles(roles);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        final var userSaved = userApiRepository.save(user);
+        return toDto(userSaved);
+    }
+
+    /**
+     * Auto-cadastro público: diferente de {@link #save}, nunca aceita roles do
+     * chamador — sempre atribui USER, prevenindo escalonamento de privilégio via payload
+     * (BOLA/mass assignment, OWASP API3:2023). Unicidade é checada aqui pra devolver
+     * mensagem específica (username x email); o índice único parcial no banco continua
+     * como rede de segurança contra corrida entre o check e o insert.
+     */
+    @Transactional
+    public UserApiDTO register(final UserApiRegisterDTO dto) {
+        if (userApiRepository.findByUsername(dto.username()).isPresent()) {
+            throw new UserAlreadyExistsException("Username already in use");
+        }
+        if (userApiRepository.findByEmail(dto.email()).isPresent()) {
+            throw new UserAlreadyExistsException("Email already in use");
+        }
+        final var userRole = roleRepository.findByAuthority("USER")
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+
+        final var user = new UserApi();
+        user.setUsername(dto.username());
+        user.setEmail(dto.email());
+        user.setPassword(passwordEncoder.encode(dto.password()));
+        user.setIsEnabled(true);
+        user.setRoles(new HashSet<>(Set.of(userRole)));
+
         final var userSaved = userApiRepository.save(user);
         return toDto(userSaved);
     }

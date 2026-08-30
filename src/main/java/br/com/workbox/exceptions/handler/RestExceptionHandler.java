@@ -5,6 +5,7 @@ import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.exceptions.UserAlreadyExistsException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -82,6 +83,11 @@ public class RestExceptionHandler {
     public ProblemDetail handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
         logger.error("Data integrity violation on {}", request.getRequestURI(), exception);
         return problem(HttpStatus.CONFLICT, "Data integrity violation");
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ProblemDetail handleUserAlreadyExistsException(final UserAlreadyExistsException exception) {
+        return problem(HttpStatus.CONFLICT, exception.getMessage());
     }
 
     @ExceptionHandler(LoginInvalidException.class)

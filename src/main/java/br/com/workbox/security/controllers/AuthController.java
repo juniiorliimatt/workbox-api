@@ -7,6 +7,7 @@ import br.com.workbox.security.dto.MfaLoginDTO;
 import br.com.workbox.security.dto.ResetPasswordDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
+import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.LoginAuditService;
@@ -54,6 +55,17 @@ public class AuthController {
         this.loginRateLimiter = loginRateLimiter;
         this.passwordResetService = passwordResetService;
         this.mfaService = mfaService;
+    }
+
+    /** Auto-cadastro público — sempre USER, nunca aceita roles do payload (ver {@link UserApiService#register}). */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody @Valid UserApiRegisterDTO dto, HttpServletRequest request) {
+        if (!loginRateLimiter.isAllowed("register:" + clientIp(request))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many registration attempts, try again later"));
+        }
+        final var created = userApiService.register(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/login")

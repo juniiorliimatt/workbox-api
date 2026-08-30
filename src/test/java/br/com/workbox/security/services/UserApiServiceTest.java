@@ -10,8 +10,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.exceptions.UserAlreadyExistsException;
 import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
+import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.repositories.RoleRepository;
@@ -295,6 +297,68 @@ class UserApiServiceTest {
 
             assertThat(result.getUsername()).isEqualTo(USERNAME);
             assertThat(result.getEmail()).isEqualTo("alice@example.com");
+        }
+    }
+
+    @Nested
+    @DisplayName("register")
+    class Register {
+
+        private final UserApiRegisterDTO dto = new UserApiRegisterDTO(USERNAME, "alice@example.com", RAW_PASSWORD);
+
+        @Test
+        @DisplayName("atribui a role USER, hasheia a senha e habilita a conta, ignorando qualquer role do payload")
+        void registerAssignsUserRoleAndHashesPassword() {
+            final var userRole = Role.builder().id(2L).authority("USER").build();
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.empty());
+            when(userApiRepository.findByEmail("alice@example.com")).thenReturn(Optional.empty());
+            when(roleRepository.findByAuthority("USER")).thenReturn(Optional.of(userRole));
+            when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(HASH);
+            when(userApiRepository.save(any(UserApi.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            final var result = service.register(dto);
+
+            assertThat(result.getUsername()).isEqualTo(USERNAME);
+            assertThat(result.isEnabled()).isTrue();
+            final var captor = ArgumentCaptor.forClass(UserApi.class);
+            verify(userApiRepository).save(captor.capture());
+            assertThat(captor.getValue().getPassword()).isEqualTo(HASH);
+            assertThat(captor.getValue().getRoles()).containsExactly(userRole);
+        }
+
+        @Test
+        @DisplayName("lança UserAlreadyExistsException quando o username já está em uso")
+        void registerThrowsWhenUsernameTaken() {
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.of(aUser().build()));
+
+            assertThatThrownBy(() -> service.register(dto))
+                    .isInstanceOf(UserAlreadyExistsException.class)
+                    .hasMessage("Username already in use");
+            verify(userApiRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("lança UserAlreadyExistsException quando o email já está em uso")
+        void registerThrowsWhenEmailTaken() {
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.empty());
+            when(userApiRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(aUser().build()));
+
+            assertThatThrownBy(() -> service.register(dto))
+                    .isInstanceOf(UserAlreadyExistsException.class)
+                    .hasMessage("Email already in use");
+            verify(userApiRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("lança ResourceNotFoundException se a role USER não existir (seed ausente)")
+        void registerThrowsWhenUserRoleMissing() {
+            when(userApiRepository.findByUsername(USERNAME)).thenReturn(Optional.empty());
+            when(userApiRepository.findByEmail("alice@example.com")).thenReturn(Optional.empty());
+            when(roleRepository.findByAuthority("USER")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.register(dto))
+                    .isInstanceOf(ResourceNotFoundException.class);
+            verify(userApiRepository, never()).save(any());
         }
     }
 
