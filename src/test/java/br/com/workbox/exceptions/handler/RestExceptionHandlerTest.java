@@ -5,10 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import br.com.workbox.exceptions.DatabaseException;
+import br.com.workbox.exceptions.InvalidImageException;
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.exceptions.UserAlreadyExistsException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -25,6 +27,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 class RestExceptionHandlerTest {
 
@@ -134,6 +137,33 @@ class RestExceptionHandlerTest {
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(response.getDetail()).isEqualTo("Data integrity violation");
         assertThat(response.getDetail()).doesNotContain("idx_users_api_email_active");
+    }
+
+    @Test
+    @DisplayName("UserAlreadyExistsException vira 409 preservando a mensagem original")
+    void userAlreadyExistsException() {
+        final var response = handler.handleUserAlreadyExistsException(new UserAlreadyExistsException("Email already in use"));
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(response.getDetail()).isEqualTo("Email already in use");
+    }
+
+    @Test
+    @DisplayName("InvalidImageException vira 400 preservando a mensagem original")
+    void invalidImageException() {
+        final var response = handler.handleInvalidImageException(new InvalidImageException("File is not a valid image"));
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.getDetail()).isEqualTo("File is not a valid image");
+    }
+
+    @Test
+    @DisplayName("MaxUploadSizeExceededException vira 413 com mensagem genérica")
+    void maxUploadSizeExceededException() {
+        final var response = handler.handleMaxUploadSizeExceededException(new MaxUploadSizeExceededException(2_000_000L));
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE.value());
+        assertThat(response.getDetail()).isEqualTo("File exceeds the maximum allowed size");
     }
 
     @Test

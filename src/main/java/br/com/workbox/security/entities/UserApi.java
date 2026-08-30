@@ -161,7 +161,7 @@ public class UserApi implements UserDetails {
 
     /**
      * Identificador de autenticação do Spring Security — login é por email, não por
-     * username. {@code @JsonIgnore} porque Jackson trata todo getter público como
+     * username. {@code @JsonIgnore} porque Jackson trata qualquer getter público como
      * propriedade serializável, e sem isso esse método sintético do contrato
      * {@link UserDetails} vazava um campo "username" duplicando o valor de email em
      * qualquer serialização da entidade (ex.: schema OpenAPI).

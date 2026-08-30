@@ -3,6 +3,7 @@ package br.com.workbox.security.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class AvatarServiceTest {
@@ -125,6 +127,31 @@ class AvatarServiceTest {
             assertThatThrownBy(() -> avatarService.store(userId, file))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
+
+        @Test
+        @DisplayName("lança InvalidImageException quando não consegue ler o stream do arquivo enviado")
+        void wrapsIOExceptionOnRead() throws IOException {
+            final var file = mock(MultipartFile.class);
+            when(file.isEmpty()).thenReturn(false);
+            when(file.getContentType()).thenReturn("image/png");
+            when(file.getInputStream()).thenThrow(new IOException("boom"));
+
+            assertThatThrownBy(() -> avatarService.store(userId, file))
+                    .isInstanceOf(InvalidImageException.class);
+            verify(userApiRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("lança InvalidImageException quando não consegue gravar a imagem em disco")
+        void wrapsIOExceptionOnWrite() throws IOException {
+            when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
+            Files.delete(tempDir);
+            final var file = new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes());
+
+            assertThatThrownBy(() -> avatarService.store(userId, file))
+                    .isInstanceOf(InvalidImageException.class);
+            verify(userApiRepository, never()).save(any());
+        }
     }
 
     @Nested
@@ -187,6 +214,58 @@ class AvatarServiceTest {
 
             assertThatThrownBy(() -> avatarService.load(userId))
                     .isInstanceOf(ResourceNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("lança ResourceNotFoundException quando o arquivo referenciado não existe mais em disco")
+        void throwsWhenFileMissingFromDisk() throws IOException {
+            when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
+            avatarService.store(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
+            Files.delete(tempDir.resolve(user.getAvatarFilename()));
+
+            assertThatThrownBy(() -> avatarService.load(userId))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("AvatarContent.equals/hashCode/toString")
+    class AvatarContentEqualsHashCodeToString {
+
+        @Test
+        @DisplayName("iguais quando bytes e content-type têm o mesmo conteúdo")
+        void equalWhenSameContent() {
+            final var a = new AvatarService.AvatarContent(new byte[]{1, 2, 3}, "image/png");
+            final var b = new AvatarService.AvatarContent(new byte[]{1, 2, 3}, "image/png");
+
+            assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
+            assertThat(a).isEqualTo(a);
+        }
+
+        @Test
+        @DisplayName("diferentes quando o conteúdo dos bytes difere")
+        void notEqualWhenBytesDiffer() {
+            final var a = new AvatarService.AvatarContent(new byte[]{1, 2, 3}, "image/png");
+            final var b = new AvatarService.AvatarContent(new byte[]{9, 9, 9}, "image/png");
+
+            assertThat(a).isNotEqualTo(b);
+        }
+
+        @Test
+        @DisplayName("diferente de null e de outro tipo")
+        void notEqualToNullOrOtherType() {
+            final var a = new AvatarService.AvatarContent(new byte[]{1, 2, 3}, "image/png");
+
+            assertThat(a).isNotEqualTo(null);
+            assertThat(a).isNotEqualTo("não é um AvatarContent");
+        }
+
+        @Test
+        @DisplayName("toString inclui o content-type")
+        void toStringIncludesContentType() {
+            final var a = new AvatarService.AvatarContent(new byte[]{1, 2, 3}, "image/png");
+
+            assertThat(a.toString()).contains("image/png");
         }
     }
 }

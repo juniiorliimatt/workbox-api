@@ -35,9 +35,10 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class AvatarService {
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final String STORED_FORMAT = "png";
     private static final String STORED_CONTENT_TYPE = "image/png";
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", STORED_CONTENT_TYPE, "image/webp");
+    private static final String USER_NOT_FOUND = "User not found";
 
     private static final Logger logger = LoggerFactory.getLogger(AvatarService.class);
 
@@ -69,20 +70,20 @@ public class AvatarService {
         try {
             image = ImageIO.read(file.getInputStream());
         } catch (IOException e) {
-            throw new InvalidImageException("Could not read the uploaded file");
+            throw new InvalidImageException("Could not read the uploaded file", e);
         }
         if (image == null) {
             throw new InvalidImageException("File is not a valid image");
         }
 
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
 
         final var filename = UUID.randomUUID() + "." + STORED_FORMAT;
         try {
             ImageIO.write(image, STORED_FORMAT, storageDir.resolve(filename).toFile());
         } catch (IOException e) {
-            throw new InvalidImageException("Could not store the image");
+            throw new InvalidImageException("Could not store the image", e);
         }
 
         deleteStoredFile(user.getAvatarFilename());
@@ -93,7 +94,7 @@ public class AvatarService {
     @Transactional
     public void delete(final UUID userId) {
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         deleteStoredFile(user.getAvatarFilename());
         user.setAvatarFilename(null);
         userApiRepository.save(user);
@@ -101,14 +102,14 @@ public class AvatarService {
 
     public AvatarContent load(final UUID userId) {
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         if (user.getAvatarFilename() == null) {
             throw new ResourceNotFoundException("User has no avatar");
         }
         try {
             final var bytes = Files.readAllBytes(storageDir.resolve(user.getAvatarFilename()));
             return new AvatarContent(bytes, STORED_CONTENT_TYPE);
-        } catch (IOException e) {
+        } catch (IOException _) {
             throw new ResourceNotFoundException("Avatar file not found");
         }
     }
