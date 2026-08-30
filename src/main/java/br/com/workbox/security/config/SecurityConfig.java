@@ -45,6 +45,7 @@ public class SecurityConfig {
     private static final String ROLE_USER = "USER";
     private static final String API_USER = "/api/v1/user/**";
     private static final String API_ROLE = "/api/v1/role/**";
+    private static final String API_AUDIT = "/api/v1/audit/**";
 
     private final Environment env;
     private final JwtService jwtService;
@@ -87,6 +88,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, API_ROLE).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.PUT, API_ROLE).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, API_ROLE).hasRole(ROLE_ADMIN)
+                .requestMatchers(HttpMethod.GET, API_AUDIT).hasRole(ROLE_ADMIN)
                 .anyRequest().authenticated()
         );
 

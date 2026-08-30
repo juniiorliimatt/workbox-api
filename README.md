@@ -124,6 +124,9 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `POST /api/v1/auth/mfa/disable` | Bearer | Desabilita MFA, exige um código TOTP válido |
 | `POST /api/v1/auth/mfa/login` | público | 2ª etapa do login quando a conta tem MFA: troca `mfa_token` (5min) + código TOTP por access+refresh |
 | `GET/POST/PUT/DELETE /api/v1/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
+| `GET /api/v1/audit/logins` | ADMIN | Tentativas de login (paginado; filtros opcionais `email`, `from`, `to` ISO-8601) |
+| `GET /api/v1/audit/users/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de um usuário |
+| `GET /api/v1/audit/roles/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de uma role |
 
 Conta com MFA habilitado: `POST /auth/login` responde `200` com `{"mfa_required": true, "mfa_token": "..."}`
 em vez dos tokens — o client chama `POST /auth/mfa/login` com esse `mfa_token` + o código de

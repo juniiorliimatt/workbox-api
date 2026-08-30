@@ -14,6 +14,83 @@ servers:
 security:
 - bearer-jwt: []
 paths:
+  /api/v1/audit/logins:
+    get:
+      operationId: findLoginAudits
+      parameters:
+      - in: query
+        name: email
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: pageable
+        required: true
+        schema:
+          $ref: "#/components/schemas/Pageable"
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageLoginAuditDTO"
+          description: OK
+      tags:
+      - audit-controller
+  /api/v1/audit/roles/{id}/history:
+    get:
+      operationId: findRoleHistory
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleRevisionDTO"
+          description: OK
+      tags:
+      - audit-controller
+  /api/v1/audit/users/{id}/history:
+    get:
+      operationId: findUserHistory
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserApiRevisionDTO"
+          description: OK
+      tags:
+      - audit-controller
   /api/v1/auth/avatar:
     delete:
       operationId: deleteAvatar
@@ -540,6 +617,23 @@ components:
       type: object
       additionalProperties:
         $ref: "#/components/schemas/Link"
+    LoginAuditDTO:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+        id:
+          type: string
+          format: uuid
+        ipAddress:
+          type: string
+        reason:
+          type: string
+        successful:
+          type: boolean
     MfaCodeDTO:
       type: object
       properties:
@@ -562,6 +656,38 @@ components:
       required:
       - code
       - mfaToken
+    PageLoginAuditDTO:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoginAuditDTO"
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: "#/components/schemas/PageableObject"
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: "#/components/schemas/SortObject"
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     PageUserApiDTO:
       type: object
       properties:
@@ -688,6 +814,27 @@ components:
           format: int64
       required:
       - authority
+    RoleRevisionDTO:
+      type: object
+      properties:
+        authority:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: string
+        deletedAt:
+          type: string
+          format: date-time
+        id:
+          type: integer
+          format: int64
+        revision:
+          type: integer
+          format: int32
+        revisionType:
+          type: string
     SortObject:
       type: object
       properties:
@@ -830,6 +977,33 @@ components:
       - email
       - password
       - socialName
+    UserApiRevisionDTO:
+      type: object
+      properties:
+        changedAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: string
+        deletedAt:
+          type: string
+          format: date-time
+        email:
+          type: string
+        enabled:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        mfaEnabled:
+          type: boolean
+        revision:
+          type: integer
+          format: int32
+        revisionType:
+          type: string
+        socialName:
+          type: string
   securitySchemes:
     bearer-jwt:
       bearerFormat: JWT
