@@ -47,7 +47,7 @@ Profiles disponíveis (`spring.profiles.active`):
 | Profile | Banco | Uso |
 |---|---|---|
 | `test` | H2 em memória, schema criado via Hibernate (`ddl-auto=create-drop`) | Testes automatizados, geração do contrato OpenAPI — não precisa de Postgres |
-| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:5432/workbox`) | Desenvolvimento — schema via Liquibase |
+| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:5433/workbox`) | Desenvolvimento — schema via Liquibase |
 | `prod` | PostgreSQL via `DATABASE_URL` (obrigatório) | Deploy |
 
 ```bash
