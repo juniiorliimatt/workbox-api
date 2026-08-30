@@ -16,7 +16,7 @@ pro GitLab é replicado automaticamente via git hook. Ver
 | Framework | Spring Boot 3.5.16 |
 | Build | Gradle 9.7.1 |
 | Persistência | Spring Data JPA + Hibernate, Liquibase (migrations) |
-| Banco | PostgreSQL (dev/prod), H2 em memória (test) |
+| Banco | PostgreSQL (dev/prod), H2 em memória (test); Testcontainers Postgres (IT de schema) |
 | Segurança | Spring Security 6 + JWT (`io.jsonwebtoken`), OAuth2 resource server/client |
 | Hypermedia | Spring HATEOAS |
 | Documentação de API | springdoc-openapi (Swagger UI + contrato versionado) |
@@ -27,16 +27,17 @@ pro GitLab é replicado automaticamente via git hook. Ver
 
 ```
 br.com.workbox
-├── config/            Configuração geral (OpenAPI, JPA auditing, servir o frontend)
+├── config/            OpenAPI, JPA auditing, mail, CorrelationIdFilter, Envers (audit/)
 ├── core/               Anotações/utilitários compartilhados
 ├── exceptions/         Exceções de domínio + handler global (RestExceptionHandler)
 └── security/
     ├── config/         Spring Security, CORS, JWT filter
-    ├── controllers/     AuthController, UserApiController
-    ├── dto/             DTOs de entrada/saída
-    ├── entities/         UserApi, Role
-    ├── repositories/     Spring Data JPA
-    └── services/         JwtService, UserApiService
+    ├── controllers/    AuthController, UserApiController, RoleController, AuditController
+    ├── dto/            DTOs de entrada/saída
+    ├── entities/        UserApi, Role, RefreshToken, LoginAudit, PasswordResetToken
+    ├── oauth2/         Login social Google (opt-in via env)
+    ├── repositories/    Spring Data JPA
+    └── services/        Jwt, UserApi, MFA, avatar, mail, refresh, audit
 ```
 
 ## Rodando localmente
@@ -116,20 +117,26 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `PUT /api/v1/auth/password` | Bearer | Troca de senha, exige a senha atual |
 | `POST /api/v1/auth/avatar` | Bearer | Upload do próprio avatar (`multipart/form-data`, campo `file`, máx. 2MB, jpeg/png/webp) — validado via `ImageIO` e reencodado como PNG antes de gravar |
 | `DELETE /api/v1/auth/avatar` | Bearer | Remove o próprio avatar |
-| `GET /api/v1/user/{id}/avatar` | Bearer | Bytes do avatar (`image/png`) de qualquer usuário — 404 se não tiver |
 | `POST /api/v1/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único; rate limit por e-mail |
 | `POST /api/v1/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
 | `POST /api/v1/auth/mfa/enroll` | Bearer | Gera segredo TOTP novo (não habilita MFA ainda) |
 | `POST /api/v1/auth/mfa/verify` | Bearer | Confirma o primeiro código TOTP e habilita MFA na conta |
 | `POST /api/v1/auth/mfa/disable` | Bearer | Desabilita MFA, exige um código TOTP válido |
 | `POST /api/v1/auth/mfa/login` | público | 2ª etapa do login quando a conta tem MFA: troca `mfa_token` (5min) + código TOTP por access+refresh |
-| `GET/POST/PUT/DELETE /api/v1/role` | Bearer (escrita = ADMIN) | CRUD de roles, exclusão lógica |
+| `GET /api/v1/user/pageable` | Bearer (USER ou ADMIN) | Lista paginada de usuários |
+| `GET /api/v1/user/find-all` | Bearer (USER ou ADMIN) | Lista completa (HATEOAS) |
+| `GET /api/v1/user/{id}` | Bearer (USER ou ADMIN) | Detalhe de um usuário |
+| `GET /api/v1/user/{id}/avatar` | Bearer (USER ou ADMIN) | Bytes do avatar (`image/png`) de qualquer usuário — 404 se não tiver |
+| `POST /api/v1/user/save` | ADMIN | Cria usuário (admin; auto-cadastro é `POST /api/v1/auth/register`) |
+| `PUT /api/v1/user/update` | ADMIN | Atualiza usuário |
+| `DELETE /api/v1/user/{id}` | ADMIN | Remove usuário |
+| `GET/POST/PUT/DELETE /api/v1/role` | Bearer (leitura = USER ou ADMIN; escrita = ADMIN) | CRUD de roles, exclusão lógica |
 | `GET /api/v1/audit/logins` | ADMIN | Tentativas de login (paginado; filtros opcionais `email`, `from`, `to` ISO-8601) |
 | `GET /api/v1/audit/users/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de um usuário |
 | `GET /api/v1/audit/roles/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de uma role |
 
-Conta com MFA habilitado: `POST /auth/login` responde `200` com `{"mfa_required": true, "mfa_token": "..."}`
-em vez dos tokens — o client chama `POST /auth/mfa/login` com esse `mfa_token` + o código de
+Conta com MFA habilitado: `POST /api/v1/auth/login` responde `200` com `{"mfa_required": true, "mfa_token": "..."}`
+em vez dos tokens — o client chama `POST /api/v1/auth/mfa/login` com esse `mfa_token` + o código de
 6 dígitos do app autenticador pra receber `access_token`/`refresh_token`. Segredo TOTP fica
 em texto plano no banco (`users_api.mfa_secret`) por simplicidade de projeto de estudo — um
 ambiente real cifraria isso em repouso.
@@ -186,10 +193,14 @@ desenvolvimento entre o agente de backend (Claude Code) e o de frontend (Antigra
 ./gradlew jacocoTestReport   # relatório em build/jacocoHtml
 ```
 
-JUnit 5 + Spring Boot Test + MockMvc. `ApiControllerTestConfig` sobrescreve
+JUnit 5 + AssertJ + Spring Boot Test + MockMvc. `ApiControllerTestConfig` sobrescreve
 intencionalmente os beans de segurança (`spring.main.allow-bean-definition-overriding=true`
 no profile `test`) para isolar os testes de controller do fluxo real de
-autenticação/DB.
+autenticação/DB. A maior parte da suíte usa H2 (`profile test`);
+[`RealPostgresSchemaIT`](src/test/java/br/com/workbox/RealPostgresSchemaIT.java) sobe
+Postgres 18 via Testcontainers (role/schema `workbox_service`/`workbox`, mesmo recorte
+de produção) e valida Liquibase + Hibernate `ddl-auto=validate` — drift de mapeamento
+(Envers) que o H2 não pega. Requer Docker.
 
 ### BDD com Cucumber: fluxo de implementação
 
