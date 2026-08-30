@@ -82,7 +82,11 @@ public class RoleManagementSteps {
 
     @Quando("eu atualizo a role {string} para {string}")
     public void euAtualizoARolePara(String authorityAtual, String novaAuthority) throws Exception {
-        final var id = roleIdsByAuthority.get(authorityAtual.toUpperCase());
+        final var id = roleIdsByAuthority.computeIfAbsent(authorityAtual.toUpperCase(), key -> roleRepository.findAll().stream()
+                .filter(role -> key.equals(role.getAuthority()))
+                .findFirst()
+                .map(Role::getId)
+                .orElseThrow(() -> new IllegalStateException("Role não encontrada pra teste: " + key)));
         final var body = objectMapper.writeValueAsString(new RoleDTO(id, novaAuthority));
         context.setResult(mockMvc.perform(put("/api/v1/role/" + id)
                         .header("Authorization", "Bearer " + context.getAccessToken())

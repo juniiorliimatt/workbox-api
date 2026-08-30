@@ -381,6 +381,19 @@ class UserApiServiceTest {
         }
 
         @Test
+        @DisplayName("save lança InvalidRequestException quando uma role vem sem id")
+        void saveThrowsWhenRoleIdMissing() {
+            final var roleWithoutId = Role.builder().authority("USER").build();
+            final var dto = new UserApiInsertOrUpdateDTO(null, NAME, RAW_PASSWORD, EMAIL, true, Set.of(roleWithoutId));
+
+            assertThatThrownBy(() -> service.save(dto))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidRequestException.class)
+                    .hasMessage("Role id is required");
+            verify(roleRepository, never()).findById(any());
+            verify(userApiRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("update aplica as mudanças e re-hasheia a senha")
         void updateRehashesPassword() {
             final var user = aUser().build();
@@ -396,6 +409,34 @@ class UserApiServiceTest {
             assertThat(user.getEmail()).isEqualTo("bob@example.com");
             assertThat(user.getIsEnabled()).isFalse();
             assertThat(result.isEnabled()).isFalse();
+        }
+
+        @Test
+        @DisplayName("update sem senha no payload preserva o hash atual (não chama o encoder)")
+        void updateWithoutPasswordKeepsCurrentHash() {
+            final var user = aUser().build();
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "Bob", null, "bob@example.com", false, Set.of());
+            when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
+            when(userApiRepository.save(user)).thenReturn(user);
+
+            service.update(dto);
+
+            assertThat(user.getPassword()).isEqualTo(HASH);
+            verify(passwordEncoder, never()).encode(any());
+        }
+
+        @Test
+        @DisplayName("update com senha em branco preserva o hash atual (não chama o encoder)")
+        void updateWithBlankPasswordKeepsCurrentHash() {
+            final var user = aUser().build();
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "Bob", "   ", "bob@example.com", false, Set.of());
+            when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
+            when(userApiRepository.save(user)).thenReturn(user);
+
+            service.update(dto);
+
+            assertThat(user.getPassword()).isEqualTo(HASH);
+            verify(passwordEncoder, never()).encode(any());
         }
 
         @Test

@@ -1,5 +1,6 @@
 package br.com.workbox.security.services;
 
+import br.com.workbox.exceptions.InvalidRequestException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
 import br.com.workbox.exceptions.UserAlreadyExistsException;
@@ -94,6 +95,9 @@ public class UserApiService implements UserDetailsService {
         logger.info("get role");
         final var roles = new HashSet<Role>();
         for (Role role : dto.roles()) {
+            if (role.getId() == null) {
+                throw new InvalidRequestException("Role id is required");
+            }
             Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
             roles.add(existingRole);
         }
@@ -131,12 +135,15 @@ public class UserApiService implements UserDetailsService {
         return toDto(userSaved);
     }
 
+    /** Senha é opcional aqui — só re-hasheia se o client mandou uma nova (update de perfil sem trocar senha é o caso comum). */
     @Transactional
     public UserApiDTO update(final UserApiInsertOrUpdateDTO dto) {
         logger.info("update user");
         final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         user.setSocialName(dto.socialName());
-        user.setPassword(passwordEncoder.encode(dto.password()));
+        if (dto.password() != null && !dto.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.password()));
+        }
         user.setEmail(dto.email());
         user.setIsEnabled(dto.isEnabled());
         final var updated = userApiRepository.save(user);

@@ -4,6 +4,7 @@ import br.com.workbox.security.dto.ChangePasswordDTO;
 import br.com.workbox.security.dto.ForgotPasswordDTO;
 import br.com.workbox.security.dto.MfaCodeDTO;
 import br.com.workbox.security.dto.MfaLoginDTO;
+import br.com.workbox.security.dto.RefreshTokenDTO;
 import br.com.workbox.security.dto.ResetPasswordDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
@@ -152,13 +153,13 @@ public class AuthController {
      * {@link JwtService#rotateRefreshToken}.
      */
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestParam String refreshToken, HttpServletRequest request) {
+    public ResponseEntity<?> refresh(@RequestBody @Valid RefreshTokenDTO dto, HttpServletRequest request) {
         if (!loginRateLimiter.isAllowed("refresh:" + clientIp(request))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many refresh attempts, try again later"));
         }
 
-        final var rotated = jwtService.rotateRefreshToken(refreshToken);
+        final var rotated = jwtService.rotateRefreshToken(dto.refreshToken());
         Map<String, String> tokens = new HashMap<>();
         tokens.put("access_token", rotated.accessToken());
         tokens.put("refresh_token", rotated.refreshToken());

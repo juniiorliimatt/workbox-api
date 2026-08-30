@@ -4,6 +4,7 @@ import br.com.workbox.exceptions.DatabaseException;
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
 import br.com.workbox.exceptions.InvalidImageException;
+import br.com.workbox.exceptions.InvalidRequestException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
 import br.com.workbox.exceptions.UserAlreadyExistsException;
@@ -100,6 +101,11 @@ public class RestExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ProblemDetail handleUserAlreadyExistsException(final UserAlreadyExistsException exception) {
         return problem(HttpStatus.CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequestException(final InvalidRequestException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(LoginInvalidException.class)

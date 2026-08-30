@@ -94,6 +94,20 @@ public class AuthenticationSteps {
         assertThat(actual).isEqualTo(HttpStatus.valueOf(expectedStatus));
     }
 
+    /**
+     * Confirma que 401/403 vêm como ProblemDetail JSON (via AccessDeniedHandler/
+     * authenticationEntryPoint em SecurityConfig) — sem isso, Spring Security responde
+     * com o whitelabel padrão do Spring Boot, que nem é JSON.
+     */
+    @Então("o corpo do erro é um ProblemDetail válido")
+    public void oCorpoDoErroEUmProblemDetailValido() throws Exception {
+        final var response = context.getResult().getResponse();
+        assertThat(response.getContentType()).contains("application/problem+json");
+        final JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertThat(json.get("status").asInt()).isEqualTo(response.getStatus());
+        assertThat(json.get("detail").asText()).isNotBlank();
+    }
+
     @Então("um access_token é retornado")
     public void umAccessTokenERetornado() throws Exception {
         final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());

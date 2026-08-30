@@ -169,7 +169,7 @@ class AuthControllerTest {
         void rateLimited() {
             when(loginRateLimiter.isAllowed(anyString())).thenReturn(false);
 
-            final var response = controller.refresh("token", new MockHttpServletRequest());
+            final var response = controller.refresh(new br.com.workbox.security.dto.RefreshTokenDTO("token"), new MockHttpServletRequest());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         }

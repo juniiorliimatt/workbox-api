@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import br.com.workbox.exceptions.DatabaseException;
 import br.com.workbox.exceptions.InvalidImageException;
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
+import br.com.workbox.exceptions.InvalidRequestException;
 import br.com.workbox.exceptions.InvalidTokenException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
@@ -137,6 +138,15 @@ class RestExceptionHandlerTest {
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(response.getDetail()).isEqualTo("Data integrity violation");
         assertThat(response.getDetail()).doesNotContain("idx_users_api_email_active");
+    }
+
+    @Test
+    @DisplayName("InvalidRequestException vira 400 preservando a mensagem original")
+    void invalidRequestException() {
+        final var response = handler.handleInvalidRequestException(new InvalidRequestException("Role id is required"));
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.getDetail()).isEqualTo("Role id is required");
     }
 
     @Test

@@ -4,6 +4,7 @@ import br.com.workbox.config.CorrelationIdFilter;
 import br.com.workbox.security.oauth2.OAuth2LoginSuccessHandler;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.UserApiService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,6 +28,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -46,16 +51,18 @@ public class SecurityConfig {
     private final UserApiService userApiService;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public SecurityConfig(Environment env, JwtService jwtService,
                            UserApiService userApiService, ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
+                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, ObjectMapper objectMapper) {
         this.env = env;
         this.jwtService = jwtService;
         this.userApiService = userApiService;
         this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -97,11 +104,15 @@ public class SecurityConfig {
             httpSecurity.oauth2Login(oauth2 -> oauth2.successHandler(oAuth2LoginSuccessHandler));
         }
 
-        httpSecurity.userDetailsService(userApiService).exceptionHandling(exceptionHandling ->
-                exceptionHandling.authenticationEntryPoint(
-                        (request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
-                )
+        // Corpo de erro em ProblemDetail (mesmo shape do RestExceptionHandler) pra 401/403 —
+        // sem isso, Spring Security responde via response.sendError()/AccessDeniedException
+        // sem passar pelo @RestControllerAdvice, e o client recebia o whitelabel padrão do
+        // Spring Boot (HTML) em vez de JSON.
+        httpSecurity.userDetailsService(userApiService).exceptionHandling(exceptionHandling -> exceptionHandling
+                .authenticationEntryPoint((request, response, authException) ->
+                        writeProblemDetail(response, HttpStatus.UNAUTHORIZED, "Unauthorized"))
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                        writeProblemDetail(response, HttpStatus.FORBIDDEN, "Forbidden"))
         );
 
         // CorrelationIdFilter registrado primeiro: Spring Security não permite ancorar um
@@ -118,6 +129,12 @@ public class SecurityConfig {
         httpSecurity.addFilterBefore(jwtService, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();
+    }
+
+    private void writeProblemDetail(final HttpServletResponse response, final HttpStatus status, final String detail) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        objectMapper.writeValue(response.getOutputStream(), ProblemDetail.forStatusAndDetail(status, detail));
     }
 
     private void configureHeadersForTestProfile(HttpSecurity httpSecurity) throws Exception {

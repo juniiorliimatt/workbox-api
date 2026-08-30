@@ -171,12 +171,12 @@ paths:
   /api/v1/auth/refresh:
     post:
       operationId: refresh
-      parameters:
-      - in: query
-        name: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenDTO"
         required: true
-        schema:
-          type: string
       responses:
         "200":
           content:
@@ -627,6 +627,14 @@ components:
           $ref: "#/components/schemas/SortObject"
         unpaged:
           type: boolean
+    RefreshTokenDTO:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+      - refreshToken
     ResetPasswordDTO:
       type: object
       properties:

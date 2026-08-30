@@ -21,6 +21,14 @@ Funcionalidade: Gestão de roles
     E eu tento autenticar com usuário "leo07" e senha "S3nh@Forte!"
     Quando eu crio a role "MANAGER"
     Então a resposta é "FORBIDDEN"
+    E o corpo do erro é um ProblemDetail válido
+
+  Cenário: Usuário comum não pode atualizar role
+    Dado um usuário habilitado "nina09" com senha "S3nh@Forte!" e a role "USER"
+    E eu tento autenticar com usuário "nina09" e senha "S3nh@Forte!"
+    Quando eu atualizo a role "USER" para "SUPERUSER"
+    Então a resposta é "FORBIDDEN"
+    E o corpo do erro é um ProblemDetail válido
 
   Cenário: Usuário comum pode listar roles
     Dado um usuário habilitado "mia08" com senha "S3nh@Forte!" e a role "USER"
