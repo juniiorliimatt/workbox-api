@@ -88,6 +88,9 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `POST /api/v1/auth/logout` | Bearer | Incrementa `tokenVersion` — revoga todo token emitido antes |
 | `GET /api/v1/auth/me` | Bearer | Dados do usuário autenticado |
 | `PUT /api/v1/auth/password` | Bearer | Troca de senha, exige a senha atual |
+| `POST /api/v1/auth/avatar` | Bearer | Upload do próprio avatar (`multipart/form-data`, campo `file`, máx. 2MB, jpeg/png/webp) — validado via `ImageIO` e reencodado como PNG antes de gravar |
+| `DELETE /api/v1/auth/avatar` | Bearer | Remove o próprio avatar |
+| `GET /api/v1/user/{id}/avatar` | Bearer | Bytes do avatar (`image/png`) de qualquer usuário — 404 se não tiver |
 | `POST /api/v1/auth/forgot-password` | público | Sempre 204 (não revela se o e-mail existe); token de 30min, uso único; rate limit por e-mail |
 | `POST /api/v1/auth/reset-password` | público | Consome o token do e-mail, seta nova senha |
 | `POST /api/v1/auth/mfa/enroll` | Bearer | Gera segredo TOTP novo (não habilita MFA ainda) |

@@ -14,6 +14,32 @@ servers:
 security:
 - bearer-jwt: []
 paths:
+  /api/v1/auth/avatar:
+    delete:
+      operationId: deleteAvatar
+      responses:
+        "200":
+          description: OK
+      tags:
+      - auth-controller
+    post:
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+      tags:
+      - auth-controller
   /api/v1/auth/forgot-password:
     post:
       operationId: forgotPassword
@@ -402,6 +428,26 @@ paths:
           description: OK
       tags:
       - user-api-controller
+  /api/v1/user/{id}/avatar:
+    get:
+      operationId: getAvatar
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+          description: OK
+      tags:
+      - user-api-controller
 components:
   schemas:
     ChangePasswordDTO:
@@ -434,6 +480,8 @@ components:
       properties:
         _links:
           $ref: "#/components/schemas/Links"
+        avatarUrl:
+          type: string
         email:
           type: string
         enabled:
@@ -718,6 +766,8 @@ components:
       properties:
         _links:
           $ref: "#/components/schemas/Links"
+        avatarUrl:
+          type: string
         email:
           type: string
         enabled:

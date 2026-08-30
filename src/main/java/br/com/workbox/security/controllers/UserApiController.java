@@ -3,6 +3,7 @@ package br.com.workbox.security.controllers;
 import br.com.workbox.core.UserApiFindAll;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
+import br.com.workbox.security.services.AvatarService;
 import br.com.workbox.security.services.UserApiService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.Link;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -33,10 +35,12 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 public class UserApiController {
 
     private final UserApiService userApiService;
+    private final AvatarService avatarService;
 
     @Autowired
-    public UserApiController(UserApiService userApiService) {
+    public UserApiController(UserApiService userApiService, AvatarService avatarService) {
         this.userApiService = userApiService;
+        this.avatarService = avatarService;
     }
 
     @GetMapping("/pageable")
@@ -70,6 +74,13 @@ public class UserApiController {
         resource.add(linkTo(methodOn(UserApiController.class).findById(id)).withSelfRel());
         resource.add(linkTo(methodOn(UserApiController.class).findAll()).withRel("all-users"));
         return ResponseEntity.ok().body(resource);
+    }
+
+    @GetMapping("/{id}/avatar")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<byte[]> getAvatar(@PathVariable UUID id) {
+        final var content = avatarService.load(id);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(content.contentType())).body(content.bytes());
     }
 
     @PostMapping("/save")

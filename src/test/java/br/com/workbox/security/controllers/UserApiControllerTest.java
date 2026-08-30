@@ -13,6 +13,7 @@ import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
+import br.com.workbox.security.services.AvatarService;
 import br.com.workbox.security.services.RefreshTokenService;
 import br.com.workbox.security.services.UserApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +57,9 @@ class UserApiControllerTest {
     @MockBean
     private RefreshTokenService refreshTokenService;
 
+    @MockBean
+    private AvatarService avatarService;
+
     @BeforeEach
     void setUp() {
         this.id = UUID.randomUUID();
@@ -76,7 +80,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName(value = "Get UserById")
     void testGetUserApiById() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
 
         mockMvc.perform(get("/api/v1/user/" + this.id))
@@ -86,9 +90,21 @@ class UserApiControllerTest {
     }
 
     @Test
+    @DisplayName(value = "Get avatar — devolve os bytes com o content-type correto")
+    void testGetAvatar() throws Exception {
+        final var bytes = new byte[]{1, 2, 3};
+        when(avatarService.load(this.id)).thenReturn(new AvatarService.AvatarContent(bytes, "image/png"));
+
+        mockMvc.perform(get("/api/v1/user/" + this.id + "/avatar"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"))
+                .andExpect(content().bytes(bytes));
+    }
+
+    @Test
     @DisplayName(value = "Save user — Location header aponta pro path real do recurso")
     void testSaveUserApi() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled());
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
         // Role sem o back-reference `users` — só pra não estourar em recursão infinita na
         // serialização JSON do corpo da requisição (Role não tem @JsonIgnore/@JsonBackReference
         // em `users`, e UserApi.roles -> Role.users -> UserApi de novo).

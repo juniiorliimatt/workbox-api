@@ -224,6 +224,7 @@ public class UserApiService implements UserDetailsService {
     }
 
     private UserApiDTO toDto(final UserApi user) {
-        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled());
+        final var avatarUrl = user.getAvatarFilename() == null ? null : "/api/v1/user/" + user.getId() + "/avatar";
+        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled(), avatarUrl);
     }
 }

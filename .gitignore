@@ -50,6 +50,9 @@ dist
 dist-ssr
 *.local
 
+# Avatares enviados por upload (ver AvatarService) — gravados fora do repo, em uploads/
+/uploads/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

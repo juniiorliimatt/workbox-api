@@ -12,6 +12,7 @@ import br.com.workbox.security.dto.MfaLoginDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
 import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.UserApi;
+import br.com.workbox.security.services.AvatarService;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.LoginAuditService;
 import br.com.workbox.security.services.LoginRateLimiter;
@@ -36,6 +37,7 @@ class AuthControllerTest {
     private LoginRateLimiter loginRateLimiter;
     private PasswordResetService passwordResetService;
     private MfaService mfaService;
+    private AvatarService avatarService;
     private AuthController controller;
 
     @BeforeEach
@@ -46,7 +48,8 @@ class AuthControllerTest {
         loginRateLimiter = mock(LoginRateLimiter.class);
         passwordResetService = mock(PasswordResetService.class);
         mfaService = mock(MfaService.class);
-        controller = new AuthController(jwtService, userApiService, loginAuditService, loginRateLimiter, passwordResetService, mfaService);
+        avatarService = mock(AvatarService.class);
+        controller = new AuthController(jwtService, userApiService, loginAuditService, loginRateLimiter, passwordResetService, mfaService, avatarService);
         when(loginRateLimiter.isAllowed(anyString())).thenReturn(true);
     }
 
@@ -74,7 +77,7 @@ class AuthControllerTest {
         @DisplayName("cadastro válido delega ao UserApiService e responde 201")
         void createsUser() {
             final var dto = new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!");
-            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true);
+            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null);
             when(userApiService.register(dto)).thenReturn(created);
 
             final var response = controller.register(dto, new MockHttpServletRequest());
@@ -184,6 +187,40 @@ class AuthControllerTest {
             final var response = controller.forgotPassword(new br.com.workbox.security.dto.ForgotPasswordDTO("alice@example.com"));
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        }
+    }
+
+    @Nested
+    @DisplayName("avatar")
+    class Avatar {
+
+        @Test
+        @DisplayName("uploadAvatar delega ao AvatarService com o id do usuário autenticado")
+        void upload() {
+            final var user = user(false);
+            final var authentication = mock(Authentication.class);
+            when(authentication.getName()).thenReturn("alice@example.com");
+            when(userApiService.loadUserByUsername("alice@example.com")).thenReturn(user);
+            final var file = new org.springframework.mock.web.MockMultipartFile("file", "avatar.png", "image/png", new byte[]{1, 2, 3});
+
+            final var response = controller.uploadAvatar(authentication, file);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            verify(avatarService).store(user.getId(), file);
+        }
+
+        @Test
+        @DisplayName("deleteAvatar delega ao AvatarService com o id do usuário autenticado")
+        void delete() {
+            final var user = user(false);
+            final var authentication = mock(Authentication.class);
+            when(authentication.getName()).thenReturn("alice@example.com");
+            when(userApiService.loadUserByUsername("alice@example.com")).thenReturn(user);
+
+            final var response = controller.deleteAvatar(authentication);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            verify(avatarService).delete(user.getId());
         }
     }
 

@@ -122,6 +122,13 @@ public class UserApi implements UserDetails {
     @Column(nullable = false)
     private Boolean mfaEnabled;
 
+    // Nome do arquivo no disco (uploads/avatars), gerado pelo servidor (UUID) — nunca o
+    // nome original enviado pelo client, pra não abrir path traversal (CWE-22). NULL até o
+    // primeiro upload. Detalhe de implementação: nunca serializado (o client usa
+    // UserApiDTO.avatarUrl, que aponta pro endpoint que serve os bytes).
+    @JsonIgnore
+    private String avatarFilename;
+
     private LocalDateTime deletedAt;
 
     @CreatedDate

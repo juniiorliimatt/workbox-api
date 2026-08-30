@@ -23,5 +23,6 @@ public class UserApiDTO extends RepresentationModel<UserApiDTO> {
     private String socialName;
     private String email;
     private boolean enabled;
+    private String avatarUrl;
 
 }

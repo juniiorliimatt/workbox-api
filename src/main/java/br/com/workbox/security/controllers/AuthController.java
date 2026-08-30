@@ -9,6 +9,7 @@ import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiLoginCredentialsDTO;
 import br.com.workbox.security.dto.UserApiRegisterDTO;
 import br.com.workbox.security.entities.UserApi;
+import br.com.workbox.security.services.AvatarService;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.LoginAuditService;
 import br.com.workbox.security.services.LoginRateLimiter;
@@ -18,10 +19,12 @@ import br.com.workbox.security.services.UserApiService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,19 +45,22 @@ public class AuthController {
     private final LoginRateLimiter loginRateLimiter;
     private final PasswordResetService passwordResetService;
     private final MfaService mfaService;
+    private final AvatarService avatarService;
 
     public AuthController(final JwtService jwtService,
                            final UserApiService userApiService,
                            final LoginAuditService loginAuditService,
                            final LoginRateLimiter loginRateLimiter,
                            final PasswordResetService passwordResetService,
-                           final MfaService mfaService) {
+                           final MfaService mfaService,
+                           final AvatarService avatarService) {
         this.jwtService = jwtService;
         this.userApiService = userApiService;
         this.loginAuditService = loginAuditService;
         this.loginRateLimiter = loginRateLimiter;
         this.passwordResetService = passwordResetService;
         this.mfaService = mfaService;
+        this.avatarService = avatarService;
     }
 
     /** Auto-cadastro público — sempre USER, nunca aceita roles do payload (ver {@link UserApiService#register}). */
@@ -173,6 +179,21 @@ public class AuthController {
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(Authentication authentication, @RequestBody @Valid ChangePasswordDTO dto) {
         userApiService.changePassword(authentication.getName(), dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Upload/troca do próprio avatar — reencodado e validado em {@link AvatarService#store}. */
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Void> uploadAvatar(Authentication authentication, @RequestParam("file") MultipartFile file) {
+        final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
+        avatarService.store(user.getId(), file);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/avatar")
+    public ResponseEntity<Void> deleteAvatar(Authentication authentication) {
+        final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
+        avatarService.delete(user.getId());
         return ResponseEntity.noContent().build();
     }
 

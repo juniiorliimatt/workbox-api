@@ -3,6 +3,7 @@ package br.com.workbox.exceptions.handler;
 import br.com.workbox.exceptions.DatabaseException;
 import br.com.workbox.exceptions.InvalidRefreshTokenException;
 import br.com.workbox.exceptions.InvalidTokenException;
+import br.com.workbox.exceptions.InvalidImageException;
 import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
 import br.com.workbox.exceptions.UserAlreadyExistsException;
@@ -18,6 +19,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Corpo de erro padronizado em RFC 7807 ({@link ProblemDetail}, suporte nativo do
@@ -83,6 +85,16 @@ public class RestExceptionHandler {
     public ProblemDetail handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
         logger.error("Data integrity violation on {}", request.getRequestURI(), exception);
         return problem(HttpStatus.CONFLICT, "Data integrity violation");
+    }
+
+    @ExceptionHandler(InvalidImageException.class)
+    public ProblemDetail handleInvalidImageException(final InvalidImageException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleMaxUploadSizeExceededException(final MaxUploadSizeExceededException exception) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "File exceeds the maximum allowed size");
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
