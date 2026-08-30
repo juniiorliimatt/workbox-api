@@ -7,6 +7,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.imageio.ImageIO;
@@ -122,5 +124,29 @@ public class AvatarService {
         }
     }
 
-    public record AvatarContent(byte[] bytes, String contentType) { }
+    public record AvatarContent(byte[] bytes, String contentType) {
+
+        // Record padrão compara byte[] por referência (Object.equals), não por conteúdo —
+        // override explícito pra equals/hashCode/toString considerarem o conteúdo do array.
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof AvatarContent other)) {
+                return false;
+            }
+            return Arrays.equals(bytes, other.bytes) && Objects.equals(contentType, other.contentType);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(Arrays.hashCode(bytes), contentType);
+        }
+
+        @Override
+        public String toString() {
+            return "AvatarContent[bytes=" + Arrays.toString(bytes) + ", contentType=" + contentType + "]";
+        }
+    }
 }
