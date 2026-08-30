@@ -68,6 +68,32 @@ acesso entre eles (ver [README raiz](../README.md#rodando-localmente)).
 O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN` roles) e
 `user` para desenvolvimento local.
 
+### Contas de teste (QA)
+
+Contas fixas, criadas via `/api/v1/auth/register` no banco local, de uso **exclusivo do
+Claude Code e do Antigravity** durante testes manuais/exploratórios — não usar em
+demonstração pro usuário final nem depender delas em teste automatizado (unit/BDD já têm
+suas próprias fixtures). Diferente das contas seed (`admin`/`user`) acima, que já foram
+alteradas várias vezes por teste manual real e não têm senha estável — estas aqui são
+mantidas de propósito.
+
+| Papel | Email | Senha | Roles |
+|---|---|---|---|
+| Admin | `qa.admin@workbox.local` | `QaAdmin@123` | `ADMIN`, `USER` |
+| User | `qa.user@workbox.local` | `QaUser@123` | `USER` |
+
+Se alguma delas for excluída/alterada sem querer, recriar é só repetir o registro:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" \
+  -d '{"socialName":"QA Admin","email":"qa.admin@workbox.local","password":"QaAdmin@123"}'
+curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" \
+  -d '{"socialName":"QA User","email":"qa.user@workbox.local","password":"QaUser@123"}'
+# promover a conta admin (register sempre atribui só USER)
+docker exec workbox-postgres psql -U postgres -d workbox -c \
+  "INSERT INTO workbox.user_roles (user_id, role_id) SELECT id, (SELECT id FROM workbox.roles WHERE authority='ADMIN') FROM workbox.users_api WHERE email='qa.admin@workbox.local';"
+```
+
 ## Autenticação
 
 Todas as rotas são versionadas em path (`/api/v1/...`) desde o início — evita quebrar
