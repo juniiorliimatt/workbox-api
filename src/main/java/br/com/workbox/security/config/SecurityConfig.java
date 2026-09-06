@@ -2,6 +2,7 @@ package br.com.workbox.security.config;
 
 import br.com.workbox.config.CorrelationIdFilter;
 import br.com.workbox.security.oauth2.OAuth2LoginSuccessHandler;
+import br.com.workbox.security.services.ApiClientUserDetailsService;
 import br.com.workbox.security.services.JwtService;
 import br.com.workbox.security.services.UserApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,20 +11,22 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -47,26 +50,58 @@ public class SecurityConfig {
     private static final String API_ROLE = "/api/v1/role/**";
     private static final String API_AUDIT = "/api/v1/audit/**";
 
+    private static final String API_INTROSPECT = "/api/v1/auth/introspect";
+
     private final Environment env;
     private final JwtService jwtService;
     private final UserApiService userApiService;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final ObjectMapper objectMapper;
+    private final ApiClientUserDetailsService apiClientUserDetailsService;
 
     @Autowired
     public SecurityConfig(Environment env, JwtService jwtService,
                            UserApiService userApiService, ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, ObjectMapper objectMapper) {
+                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, ObjectMapper objectMapper,
+                           ApiClientUserDetailsService apiClientUserDetailsService) {
         this.env = env;
         this.jwtService = jwtService;
         this.userApiService = userApiService;
         this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.objectMapper = objectMapper;
+        this.apiClientUserDetailsService = apiClientUserDetailsService;
+    }
+
+    /**
+     * Filter chain isolada pro endpoint de introspecção — autentica resource servers
+     * externos (ex.: budget-service) via client credentials (HTTP Basic) contra a tabela
+     * {@code api_clients} ({@link ApiClientUserDetailsService}), nunca via JWT de usuário
+     * nem via cliente hardcoded em Java — liberar um serviço novo é inserir uma linha
+     * (Liquibase), não editar esta classe. Precisa vir em {@code @Order(1)}: com múltiplas
+     * {@link SecurityFilterChain}, o Spring exige ordem explícita, e a primeira cujo
+     * {@code securityMatcher} bater com a requisição é a única acionada —
+     * {@link #securityFilterChain} (sem matcher, "/**") nunca chega a rodar pra esse path.
+     * {@code PathPatternRequestMatcher} explícito em vez do overload de String: o overload
+     * resolve pra {@code MvcRequestMatcher}, que exige o bean
+     * {@code mvcHandlerMappingIntrospector} (só existe com autoconfig completo de Spring
+     * MVC) — quebrava em contexto de teste com {@code webApplicationType=NONE}.
+     */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain introspectionFilterChain(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(API_INTROSPECT))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .userDetailsService(apiClientUserDetailsService)
+                .httpBasic(Customizer.withDefaults());
+        return httpSecurity.build();
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         configureHeadersForTestProfile(httpSecurity);
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
@@ -143,11 +178,6 @@ public class SecurityConfig {
         if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
             httpSecurity.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
         }
-    }
-
-    @Bean
-    public AuthenticationManager authManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean

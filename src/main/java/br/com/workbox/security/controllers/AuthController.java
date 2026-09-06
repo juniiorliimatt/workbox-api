@@ -180,6 +180,18 @@ public class AuthController {
         return ResponseEntity.ok(userApiService.me(authentication.getName()));
     }
 
+    /**
+     * Introspecção de access token pra resource servers externos (ex.: budget-service) —
+     * protegido por client credentials (HTTP Basic) em
+     * {@link br.com.workbox.security.config.SecurityConfig}, não pelo filtro de JWT de
+     * usuário. Nunca lança 401 pra token inválido/expirado: responde 200 com
+     * {@code active=false}, seguindo RFC 7662.
+     */
+    @PostMapping(value = "/introspect", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<JwtService.IntrospectionResult> introspect(@RequestParam("token") String token) {
+        return ResponseEntity.ok(jwtService.introspect(token));
+    }
+
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(Authentication authentication, @RequestBody @Valid ChangePasswordDTO dto) {
         userApiService.changePassword(authentication.getName(), dto);

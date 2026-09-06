@@ -216,6 +216,82 @@ class JwtServiceTest {
     }
 
     @Nested
+    @DisplayName("introspect")
+    class Introspect {
+
+        @Test
+        @DisplayName("access token válido retorna active=true com sub, roles e exp")
+        void validAccessTokenIsActive() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = rawToken("access", "alice", 60_000, 0L);
+
+            final var result = jwtService.introspect(token);
+
+            assertThat(result.active()).isTrue();
+            assertThat(result.sub()).isEqualTo("alice");
+            assertThat(result.roles()).isEqualTo(List.of("ROLE_USER"));
+            assertThat(result.exp()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("token com tokenVersion revogada retorna active=false")
+        void revokedTokenVersionIsInactive() {
+            final var user = enabledUser("alice");
+            user.setTokenVersion(1L); // logout/troca de senha já incrementou
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = rawToken("access", "alice", 60_000, 0L); // token emitido antes
+
+            assertThat(jwtService.introspect(token).active()).isFalse();
+        }
+
+        @Test
+        @DisplayName("refresh token apresentado como access retorna active=false")
+        void refreshTokenIsInactive() {
+            final var token = rawToken("refresh", "alice", 60_000, 0L);
+
+            assertThat(jwtService.introspect(token).active()).isFalse();
+            org.mockito.Mockito.verifyNoInteractions(userApiService);
+        }
+
+        @Test
+        @DisplayName("usuário desabilitado retorna active=false mesmo com token válido")
+        void disabledAccountIsInactive() {
+            final var user = enabledUser("alice");
+            user.setIsEnabled(false);
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            final var token = rawToken("access", "alice", 60_000, 0L);
+
+            assertThat(jwtService.introspect(token).active()).isFalse();
+        }
+
+        @Test
+        @DisplayName("token malformado retorna active=false sem propagar exceção")
+        void malformedTokenIsInactive() {
+            assertThat(jwtService.introspect("token-completamente-invalido").active()).isFalse();
+        }
+
+        @Test
+        @DisplayName("token vazio retorna active=false em vez de propagar IllegalArgumentException")
+        void blankTokenIsInactive() {
+            // JJWT lança IllegalArgumentException (não JwtException) pra string vazia/nula —
+            // achado testando ao vivo contra o container: um resource server mandando token
+            // vazio virava 500 em vez de active=false.
+            assertThat(jwtService.introspect("").active()).isFalse();
+        }
+
+        @Test
+        @DisplayName("usuário do subject não encontrado retorna active=false")
+        void unknownUserIsInactive() {
+            when(userApiService.loadUserByUsername("ghost"))
+                    .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("ghost"));
+            final var token = rawToken("access", "ghost", 60_000, 0L);
+
+            assertThat(jwtService.introspect(token).active()).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("rotateRefreshToken")
     class RotateRefreshToken {
 

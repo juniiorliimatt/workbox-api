@@ -227,6 +227,34 @@ class AuthControllerTest {
     }
 
     @Nested
+    @DisplayName("introspect")
+    class Introspect {
+
+        @Test
+        @DisplayName("delega ao JwtService e devolve o resultado tal qual")
+        void delegatesToJwtService() {
+            final var result = new JwtService.IntrospectionResult(true, "alice@example.com", java.util.List.of("ROLE_USER"), 123L);
+            when(jwtService.introspect("tok")).thenReturn(result);
+
+            final var response = controller.introspect("tok");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isEqualTo(result);
+        }
+
+        @Test
+        @DisplayName("token inválido responde 200 com active=false, nunca 401")
+        void inactiveTokenStillReturns200() {
+            when(jwtService.introspect("bad")).thenReturn(JwtService.IntrospectionResult.inactive());
+
+            final var response = controller.introspect("bad");
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().active()).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("mfa enroll/verify/disable")
     class MfaManagement {
 

@@ -228,34 +228,72 @@ public class JwtService extends OncePerRequestFilter {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private UsernamePasswordAuthenticationToken getAuthentication(String token) {
         try {
-            final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
-            if (!ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+            final var resolved = resolveAccessToken(token);
+            if (resolved == null) {
                 return null;
             }
-            String username = claims.getSubject();
-            if (username == null) {
-                return null;
-            }
-            final var userDetail = (UserApi) userApiService.loadUserByUsername(username);
-            if (!isAccountUsable(userDetail)) {
-                return null;
-            }
-            if (!Objects.equals(tokenVersionOf(userDetail), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
-                return null;
-            }
-            final var roles = (List<String>) claims.get("roles");
-            List<GrantedAuthority> authorities = roles.stream()
+            final List<GrantedAuthority> authorities = resolved.roles().stream()
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
-
-            return new UsernamePasswordAuthenticationToken(username, null, authorities);
-        } catch (JwtException e) {
+            return new UsernamePasswordAuthenticationToken(resolved.username(), null, authorities);
+        } catch (JwtException | IllegalArgumentException e) {
             throw new InvalidTokenException("Invalid token or expired");
+        }
+    }
+
+    /**
+     * Introspecção de access token pra resource servers externos (ex.: budget-service)
+     * que não decodificam o JWT localmente — em vez de compartilhar {@code jwt.secret},
+     * eles chamam {@code POST /api/v1/auth/introspect} (client credentials via HTTP
+     * Basic) e recebem só o resultado da validação. Reaproveita a mesma checagem de
+     * {@code tokenVersion} usada em {@link #getAuthentication}, então logout/troca de
+     * senha/reset também revogam o token do ponto de vista do resource server externo —
+     * o que um {@code JwtDecoder} local (validando só assinatura/expiração) nunca
+     * conseguiria enxergar.
+     */
+    public IntrospectionResult introspect(final String token) {
+        try {
+            final var resolved = resolveAccessToken(token);
+            if (resolved == null) {
+                return IntrospectionResult.inactive();
+            }
+            return new IntrospectionResult(true, resolved.username(), resolved.roles(), resolved.expiration().toInstant().getEpochSecond());
+        } catch (JwtException | IllegalArgumentException e) {
+            return IntrospectionResult.inactive();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private ResolvedAccessToken resolveAccessToken(final String token) {
+        final var claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
+        if (!ACCESS_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+            return null;
+        }
+        final var username = claims.getSubject();
+        if (username == null) {
+            return null;
+        }
+        final UserApi userDetail;
+        try {
+            userDetail = (UserApi) userApiService.loadUserByUsername(username);
         } catch (UsernameNotFoundException e) {
             return null;
+        }
+        if (!isAccountUsable(userDetail) || !Objects.equals(tokenVersionOf(userDetail), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
+            return null;
+        }
+        final var roles = (List<String>) claims.get("roles");
+        return new ResolvedAccessToken(username, roles, claims.getExpiration());
+    }
+
+    private record ResolvedAccessToken(String username, List<String> roles, Date expiration) {
+    }
+
+    public record IntrospectionResult(boolean active, String sub, List<String> roles, Long exp) {
+        public static IntrospectionResult inactive() {
+            return new IntrospectionResult(false, null, null, null);
         }
     }
 
