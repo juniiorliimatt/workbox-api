@@ -57,8 +57,7 @@ Profiles disponíveis (`spring.profiles.active`):
 
 Variáveis de ambiente relevantes: `PORT` (default 8080), `JWT_SECRET`, `DATABASE_URL`,
 `POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_service`/`workbox_service` — role
-restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default
-`workbox`), `admin.password`.
+restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default `workbox`).
 
 Postgres local sobe via `docker-compose.yml` na raiz do monorepo (ver [README
 raiz](../README.md#rodando-localmente)) na porta **5433**, não 5432 — passe
@@ -134,6 +133,7 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `GET /api/v1/audit/logins` | ADMIN | Tentativas de login (paginado; filtros opcionais `email`, `from`, `to` ISO-8601) |
 | `GET /api/v1/audit/users/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de um usuário |
 | `GET /api/v1/audit/roles/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de uma role |
+| `POST /api/v1/auth/introspect` | Client credentials (HTTP Basic, não Bearer) | Introspecção de access token pra resource servers externos (ver [Clientes de introspecção](#clientes-de-introspecção-resource-servers)) — sempre 200, nunca 401 pra token inválido/expirado (RFC 7662: `{"active": false}`) |
 
 Conta com MFA habilitado: `POST /api/v1/auth/login` responde `200` com `{"mfa_required": true, "mfa_token": "..."}`
 em vez dos tokens — o client chama `POST /api/v1/auth/mfa/login` com esse `mfa_token` + o código de
@@ -148,6 +148,39 @@ subida da aplicação.
 Toda tentativa de login (sucesso ou falha) fica em `login_audit`. Mudanças em `UserApi`/
 `Role` ficam versionadas via Hibernate Envers (`users_api_aud`/`roles_aud` + `rev_info`,
 quem mudou vem do `SecurityContext`).
+
+### Clientes de introspecção (resource servers)
+
+Resource servers externos (ex.: `budget-service`) não decodificam o JWT localmente — em
+vez de compartilhar `jwt.secret`, eles chamam `POST /api/v1/auth/introspect` (client
+credentials via HTTP Basic) e recebem o resultado da validação já pronto (`active`,
+`sub`, `roles`, `exp`). Isso também propaga logout/troca de senha/reset como revogação
+pro resource server externo — algo que um `JwtDecoder` local (validando só assinatura/
+expiração) nunca enxergaria.
+
+Clientes autorizados vivem na tabela `workbox.api_clients`, **nunca hardcoded em Java** —
+liberar um microserviço novo pro grant `CLIENT_SECRET` é inserir uma linha via changeset
+Liquibase novo (ver `db/changelog/v0.0.2/create/260906_0000_create_table_api_clients.sql`
+como referência), sem tocar em `SecurityConfig`/`ApiClientUserDetailsService`. Passos:
+
+1. Gere um secret forte e o hash BCrypt correspondente (mesmo custo 12 usado em
+   `ApiConfig.passwordEncoder()`):
+   ```bash
+   python3 -c "import bcrypt; print(bcrypt.hashpw(b'SEU_SECRET_AQUI', bcrypt.gensalt(rounds=12)).decode())"
+   ```
+2. Crie um changeset novo em `db/changelog/v0.0.2/create/` inserindo a linha em
+   `workbox.api_clients` (`name`, `client_id`, `client_secret_hash`, `allowed_grant_types`
+   como `["CLIENT_SECRET"]`, `active=true`) — **nunca edite um changeset já aplicado**,
+   sempre um arquivo/changeset novo.
+3. O serviço consumidor autentica com `client_id`/o secret em texto plano (não o hash) via
+   HTTP Basic em `POST /api/v1/auth/introspect`.
+
+`allowed_grant_types` existe como array (JSONB) pra declarar, por cliente, quais
+mecanismos de autenticação ele pode usar — hoje só `CLIENT_SECRET` tem código de validação
+implementado (`ApiClientUserDetailsService`); valores futuros (ex.: `AUTHORIZATION_CODE`)
+vão sempre exigir código novo além da entrada na tabela, ela só declara o que cada cliente
+**pode** usar, não implementa mecanismos novos sozinha. Revogar um cliente é `active=false`
+via changeset (nunca `DELETE` — preserva o histórico).
 
 ## Observabilidade
 
@@ -232,8 +265,9 @@ que não existe, DTO que falta um campo) antes de qualquer lógica de negócio s
 ## CI/CD
 
 `.gitlab-ci.yml`: `test` (build + testes) → `contract-drift-check` (contrato em dia) →
-`build` (empacota o JAR). `sonarcloud-check` roda análise estática em MRs e nas branches
-`main`/`develop`.
+`build` (empacota o JAR). `sonarcloud-check` roda análise estática em merge requests e em
+pushes diretos à `main` (não `develop` — só dispara em MR ou push na branch protegida).
+`docker:dind` habilitado por padrão pro `RealPostgresSchemaIT` (Testcontainers).
 
 ## Deploy
 
