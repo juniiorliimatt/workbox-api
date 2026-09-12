@@ -1,6 +1,7 @@
 package br.com.workbox.security.controllers;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -87,6 +88,18 @@ class UserApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/hal+json"))
                 .andExpect(jsonPath("$.socialName").value(NAME));
+    }
+
+    @Test
+    @DisplayName(value = "Pageable — repassa o query param search pro service")
+    void testFindAllPageablePassesSearchThrough() throws Exception {
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
+        final var page = new org.springframework.data.domain.PageImpl<>(java.util.List.of(userApiDto));
+        when(userApiService.findAll(eq("rocha"), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/user/pageable").param("search", "rocha"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].socialName").value(NAME));
     }
 
     @Test

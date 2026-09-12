@@ -5,6 +5,7 @@ import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.services.AvatarService;
 import br.com.workbox.security.services.UserApiService;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -43,11 +44,19 @@ public class UserApiController {
         this.avatarService = avatarService;
     }
 
+    /**
+     * {@code search} filtra por substring (case-insensitive) em socialName OU email.
+     * Nome do método diferente de {@link #findAll()} de propósito: springdoc-openapi
+     * confunde metadado de parâmetro (`@Parameter`/`@UserApiFindAll`) entre métodos
+     * sobrecarregados com o mesmo nome no mesmo controller — o parâmetro real
+     * ({@code search}) aparecia substituído pelo fantasma de {@link #findAll()} no
+     * contrato gerado até esse método ganhar um nome próprio.
+     */
     @GetMapping("/pageable")
-    @UserApiFindAll
+    @Parameter(name = "search", description = "Filtro por substring (case-insensitive) em socialName ou email", required = false)
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Page<UserApiDTO>> findAll(Pageable pageable) {
-        return ResponseEntity.ok(userApiService.findAll(pageable));
+    public ResponseEntity<Page<UserApiDTO>> findAllPageable(@RequestParam(required = false) String search, Pageable pageable) {
+        return ResponseEntity.ok(userApiService.findAll(search, pageable));
     }
 
     @GetMapping("/find-all")

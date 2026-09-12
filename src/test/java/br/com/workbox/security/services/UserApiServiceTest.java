@@ -33,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -254,16 +255,27 @@ class UserApiServiceTest {
     class Queries {
 
         @Test
-        @DisplayName("findAll(Pageable) mapeia entidades pra DTO preservando paginação")
+        @DisplayName("findAll(null, Pageable) mapeia entidades pra DTO preservando paginação")
         void findAllPageable() {
             final var user = aUser().build();
             final var page = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
-            when(userApiRepository.findAll(PageRequest.of(0, 10))).thenReturn(page);
+            when(userApiRepository.findAll(any(Specification.class), eq(PageRequest.of(0, 10)))).thenReturn(page);
 
-            final var result = service.findAll(PageRequest.of(0, 10));
+            final var result = service.findAll(null, PageRequest.of(0, 10));
 
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent().get(0).getSocialName()).isEqualTo(NAME);
+        }
+
+        @Test
+        @DisplayName("findAll(search em branco, Pageable) trata como sem filtro")
+        void findAllBlankSearchIsUnfiltered() {
+            final var page = new PageImpl<UserApi>(List.of(), PageRequest.of(0, 10), 0);
+            when(userApiRepository.findAll(any(Specification.class), eq(PageRequest.of(0, 10)))).thenReturn(page);
+
+            service.findAll("   ", PageRequest.of(0, 10));
+
+            verify(userApiRepository).findAll(any(Specification.class), eq(PageRequest.of(0, 10)));
         }
 
         @Test

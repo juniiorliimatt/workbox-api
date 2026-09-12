@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -63,10 +64,24 @@ public class UserApiService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
     }
 
+    /**
+     * Specification em vez de JPQL {@code (:search IS NULL OR ...)} — esse padrão quebra
+     * contra Postgres real ("could not determine data type of parameter") quando o
+     * parâmetro vem nulo, porque o driver não infere o tipo do bind só a partir de
+     * "? IS NULL" (achado real em {@code AuditService}; H2/perfil de teste não reproduz).
+     * Specification só adiciona o predicado quando {@code search} de fato veio preenchido.
+     */
     @Transactional(readOnly = true)
-    public Page<UserApiDTO> findAll(Pageable pageable) {
+    public Page<UserApiDTO> findAll(final String search, final Pageable pageable) {
         logger.info("find all users pageable");
-        final var list = userApiRepository.findAll(pageable);
+        Specification<UserApi> spec = Specification.unrestricted();
+        if (search != null && !search.isBlank()) {
+            final var pattern = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("socialName")), pattern),
+                    cb.like(cb.lower(root.get("email")), pattern)));
+        }
+        final var list = userApiRepository.findAll(spec, pageable);
         return list.map(this::toDto);
     }
 

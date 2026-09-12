@@ -407,7 +407,7 @@ paths:
       - role-controller
   /api/v1/user/find-all:
     get:
-      operationId: findAll_2
+      operationId: findAll_1
       parameters:
       - in: query
         name: User API
@@ -424,17 +424,19 @@ paths:
       - user-api-controller
   /api/v1/user/pageable:
     get:
-      operationId: findAll_1
+      operationId: findAllPageable
       parameters:
+      - description: Filtro por substring (case-insensitive) em socialName ou email
+        in: query
+        name: search
+        required: false
+        schema:
+          type: string
       - in: query
         name: pageable
         required: true
         schema:
           $ref: "#/components/schemas/Pageable"
-      - in: query
-        name: User API
-        schema:
-          type: string
       responses:
         "200":
           content:
