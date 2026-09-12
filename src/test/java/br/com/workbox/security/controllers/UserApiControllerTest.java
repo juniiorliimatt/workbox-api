@@ -26,16 +26,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @ActiveProfiles("test")
 @Import(ApiControllerTestConfig.class)
 @WebMvcTest(UserApiController.class)
-@MockBean(JpaMetamodelMappingContext.class)
+@MockitoBean(types = JpaMetamodelMappingContext.class)
 class UserApiControllerTest {
 
     private static final String NAME = "Test User";
@@ -52,13 +52,13 @@ class UserApiControllerTest {
     @Autowired
     private ObjectMapper mapper;
 
-    @MockBean
+    @MockitoBean
     private UserApiService userApiService;
 
-    @MockBean
+    @MockitoBean
     private RefreshTokenService refreshTokenService;
 
-    @MockBean
+    @MockitoBean
     private AvatarService avatarService;
 
     @BeforeEach
