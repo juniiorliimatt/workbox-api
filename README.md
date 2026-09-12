@@ -219,6 +219,18 @@ rodando, o Swagger UI fica em `/swagger-ui/index.html`.
 Ver também: [AGENTS.md](../AGENTS.md), que descreve como este contrato alinha o
 desenvolvimento entre o agente de backend (Claude Code) e o de frontend (Antigravity).
 
+## Convenção de commits
+
+Sempre em português (pt-BR), Conventional Commits com o prefixo de tipo em inglês:
+
+```
+<tipo>(<escopo opcional>): <descrição curta e objetiva em português>
+```
+
+Tipos aceitos: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `style`, `perf`, `ci`,
+`revert`. Vale pros quatro repositórios do monorepo — regra completa e exemplo em
+[AGENTS.md](../AGENTS.md#convenção-de-mensagens-de-commit).
+
 ## Testes
 
 ```bash
