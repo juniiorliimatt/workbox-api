@@ -39,13 +39,29 @@ public class MailService {
         message.setSubject("Redefinição de senha");
         message.setText("Clique no link abaixo pra redefinir sua senha. Expira em 30 minutos.\n\n" + link
                 + "\n\nSe você não pediu isso, ignore este e-mail.");
+        send(message, to);
+    }
+
+    /** Disparado só depois que a senha já foi trocada com sucesso — nunca antes. */
+    public void sendPasswordResetConfirmationEmail(final String to) {
+        final var message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setFrom(fromAddress);
+        message.setSubject("Sua senha foi redefinida");
+        message.setText("Sua senha foi alterada com sucesso.\n\n"
+                + "Se você não fez essa alteração, troque sua senha novamente agora e "
+                + "entre em contato com o suporte.");
+        send(message, to);
+    }
+
+    private void send(final SimpleMailMessage message, final String to) {
         try {
             mailSender.send(message);
         } catch (MailException e) {
             // Sem SMTP real configurado (padrão em dev/estudo), o envio falha aqui —
-            // nunca propagar pro chamador: forgot-password sempre responde de forma
-            // idêntica exista ou não o e-mail, envio tendo funcionado ou não.
-            logger.warn("Failed to send password reset email to {}: {}", to, e.getMessage());
+            // nunca propagar pro chamador: a operação de negócio (forgot-password,
+            // reset-password) já concluiu, o e-mail é só notificação best-effort.
+            logger.warn("Failed to send email to {}: {}", to, e.getMessage());
         }
     }
 }

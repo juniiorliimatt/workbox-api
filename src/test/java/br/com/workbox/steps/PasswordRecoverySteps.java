@@ -10,6 +10,7 @@ import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.entities.UserApi;
 import br.com.workbox.security.repositories.UserApiRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.cucumber.java.Before;
 import io.cucumber.java.pt.Dado;
 import io.cucumber.java.pt.Então;
 import io.cucumber.java.pt.Quando;
@@ -45,6 +46,11 @@ public class PasswordRecoverySteps {
 
     private String lastCapturedToken;
 
+    @Before
+    public void limparCaixaDeEmailCapturada() {
+        capturingMailSender.clear();
+    }
+
     @Dado("um usuário habilitado {string} com senha {string} e e-mail {string}")
     public void umUsuarioHabilitadoComSenhaEEmail(String username, String rawPassword, String email) {
         final var role = Role.builder().authority("USER").build();
@@ -79,6 +85,14 @@ public class PasswordRecoverySteps {
         final var matcher = TOKEN_PATTERN.matcher(message.getText());
         assertThat(matcher.find()).as("token no corpo do e-mail").isTrue();
         this.lastCapturedToken = matcher.group(1);
+    }
+
+    @Então("um e-mail de confirmação de redefinição foi enviado para {string}")
+    public void umEmailDeConfirmacaoDeRedefinicaoFoiEnviadoPara(String email) {
+        final var message = capturingMailSender.getLastMessage();
+        assertThat(message).isNotNull();
+        assertThat(message.getTo()).contains(email);
+        assertThat(message.getSubject()).isEqualTo("Sua senha foi redefinida");
     }
 
     @Quando("eu redefino a senha com o token recebido para {string}")

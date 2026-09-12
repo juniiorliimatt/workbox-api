@@ -81,6 +81,8 @@ public class PasswordResetService {
 
         token.setUsed(true);
         tokenRepository.save(token);
+
+        mailService.sendPasswordResetConfirmationEmail(user.getEmail());
     }
 
     private String generateRawToken() {

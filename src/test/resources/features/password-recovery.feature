@@ -15,6 +15,7 @@ Funcionalidade: Recuperação de senha por e-mail
     E um e-mail de redefinição foi enviado para "ivan04@example.com"
     Quando eu redefino a senha com o token recebido para "NovaSenh@789"
     Então a resposta é "NO_CONTENT"
+    E um e-mail de confirmação de redefinição foi enviado para "ivan04@example.com"
     E eu consigo logar com usuário "ivan04" e senha "NovaSenh@789"
 
   Cenário: Token de reset já usado não pode ser reutilizado
