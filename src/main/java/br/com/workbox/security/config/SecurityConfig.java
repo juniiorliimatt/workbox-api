@@ -184,7 +184,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();
         // Origin enviado pelo browser nunca tem barra final — CorsConfiguration faz match exato.
-        configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:5173","http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:7053","http://localhost:7053"));
         configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

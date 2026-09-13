@@ -40,7 +40,7 @@ class OAuth2LoginSuccessHandlerTest {
         roleRepository = mock(RoleRepository.class);
         jwtService = mock(JwtService.class);
         passwordEncoder = mock(PasswordEncoder.class);
-        handler = new OAuth2LoginSuccessHandler(userApiRepository, roleRepository, jwtService, passwordEncoder, "http://localhost:5173");
+        handler = new OAuth2LoginSuccessHandler(userApiRepository, roleRepository, jwtService, passwordEncoder, "http://localhost:7053");
     }
 
     private Authentication authenticationWith(final String email, final String name) {
@@ -65,7 +65,7 @@ class OAuth2LoginSuccessHandlerTest {
         handler.onAuthenticationSuccess(request, response, authenticationWith("alice@example.com", "Alice"));
 
         assertThat(response.getRedirectedUrl())
-                .startsWith("http://localhost:5173/oauth2/callback")
+                .startsWith("http://localhost:7053/oauth2/callback")
                 .contains("access_token=access")
                 .contains("refresh_token=refresh");
         verify(roleRepository, never()).findAll();

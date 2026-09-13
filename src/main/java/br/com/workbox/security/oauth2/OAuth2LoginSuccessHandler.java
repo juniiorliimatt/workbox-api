@@ -46,7 +46,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                       final RoleRepository roleRepository,
                                       final JwtService jwtService,
                                       final PasswordEncoder passwordEncoder,
-                                      @Value("${frontend.base-url:http://localhost:5173}") final String frontendBaseUrl) {
+                                      @Value("${frontend.base-url:http://localhost:7053}") final String frontendBaseUrl) {
         this.userApiRepository = userApiRepository;
         this.roleRepository = roleRepository;
         this.jwtService = jwtService;

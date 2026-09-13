@@ -47,7 +47,7 @@ Profiles disponíveis (`spring.profiles.active`):
 | Profile | Banco | Uso |
 |---|---|---|
 | `test` | H2 em memória, schema criado via Hibernate (`ddl-auto=create-drop`) | Testes automatizados, geração do contrato OpenAPI — não precisa de Postgres |
-| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:5433/workbox`) | Desenvolvimento — schema via Liquibase |
+| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:7050/workbox`) | Desenvolvimento — schema via Liquibase |
 | `prod` | PostgreSQL via `DATABASE_URL` (obrigatório) | Deploy |
 
 ```bash
@@ -55,13 +55,13 @@ Profiles disponíveis (`spring.profiles.active`):
 ./gradlew bootRun --args='--spring.profiles.active=test'  # sem dependência externa
 ```
 
-Variáveis de ambiente relevantes: `PORT` (default 8080), `JWT_SECRET`, `DATABASE_URL`,
+Variáveis de ambiente relevantes: `PORT` (default 7051), `JWT_SECRET`, `DATABASE_URL`,
 `POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_service`/`workbox_service` — role
 restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default `workbox`).
 
 Postgres local sobe via `docker-compose.yml` na raiz do monorepo (ver [README
-raiz](../README.md#rodando-localmente)) na porta **5433**, não 5432 — passe
-`DATABASE_URL=jdbc:postgresql://localhost:5433/workbox`. Banco único (`workbox`)
+raiz](../README.md#rodando-localmente)) na porta **7050**, não 5432 — passe
+`DATABASE_URL=jdbc:postgresql://localhost:7050/workbox`. Banco único (`workbox`)
 compartilhado com os outros microserviços — cada um isolado no seu próprio schema, sem
 acesso entre eles (ver [README raiz](../README.md#rodando-localmente)).
 
@@ -85,9 +85,9 @@ mantidas de propósito.
 Se alguma delas for excluída/alterada sem querer, recriar é só repetir o registro:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" \
+curl -X POST http://localhost:7051/api/v1/auth/register -H "Content-Type: application/json" \
   -d '{"socialName":"QA Admin","email":"qa.admin@workbox.local","password":"QaAdmin@123"}'
-curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" \
+curl -X POST http://localhost:7051/api/v1/auth/register -H "Content-Type: application/json" \
   -d '{"socialName":"QA User","email":"qa.user@workbox.local","password":"QaUser@123"}'
 # promover a conta admin (register sempre atribui só USER)
 docker exec workbox-postgres psql -U postgres -d workbox -c \

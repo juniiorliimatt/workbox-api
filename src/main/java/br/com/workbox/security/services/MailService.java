@@ -25,7 +25,7 @@ public class MailService {
 
     public MailService(final JavaMailSender mailSender,
                         @Value("${mail.from:no-reply@workbox.local}") final String fromAddress,
-                        @Value("${frontend.base-url:http://localhost:5173}") final String frontendBaseUrl) {
+                        @Value("${frontend.base-url:http://localhost:7053}") final String frontendBaseUrl) {
         this.mailSender = mailSender;
         this.fromAddress = fromAddress;
         this.frontendBaseUrl = frontendBaseUrl;
