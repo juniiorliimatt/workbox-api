@@ -28,6 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
@@ -195,6 +196,17 @@ class RestExceptionHandlerTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(response.getDetail()).isEqualTo("Malformed JSON request body");
+    }
+
+    @Test
+    @DisplayName("NoResourceFoundException (rota sem handler) vira 404, não 500")
+    void noResourceFoundException() {
+        final var exception = new NoResourceFoundException(org.springframework.http.HttpMethod.GET, "api/v1/revenues");
+
+        final var response = handler.handleNoResourceFound(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(response.getDetail()).isEqualTo("No handler for this route");
     }
 
     @Test

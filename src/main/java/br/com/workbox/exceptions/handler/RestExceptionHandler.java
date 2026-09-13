@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Corpo de erro padronizado em RFC 7807 ({@link ProblemDetail}, suporte nativo do
@@ -123,6 +124,18 @@ public class RestExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail handleMessageNotReadable(final HttpMessageNotReadableException exception) {
         return problem(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
+    }
+
+    /**
+     * URL sem handler mapeado (rota inexistente, incluindo requisição que deveria ter
+     * ido pra outro microserviço) é 404, não 500 - achado ao investigar por que
+     * requisições de /api/v1/revenues* (budget-service) que caíam aqui por engano
+     * (nginx do workbox-app sem rota específica pro budget-service) apareciam como erro
+     * de servidor em vez de simplesmente "rota não existe aqui".
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(final NoResourceFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "No handler for this route");
     }
 
     @ExceptionHandler(Exception.class)
