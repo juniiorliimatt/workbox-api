@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -183,6 +184,17 @@ class RestExceptionHandlerTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(response.getDetail()).isEqualTo("credenciais inválidas");
+    }
+
+    @Test
+    @DisplayName("HttpMessageNotReadableException (JSON malformado) vira 400, não 500")
+    void httpMessageNotReadableException() {
+        final var exception = new HttpMessageNotReadableException("Cannot deserialize value", (org.springframework.http.HttpInputMessage) null);
+
+        final var response = handler.handleMessageNotReadable(exception);
+
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.getDetail()).isEqualTo("Malformed JSON request body");
     }
 
     @Test

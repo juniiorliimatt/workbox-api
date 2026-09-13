@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -111,6 +112,17 @@ public class RestExceptionHandler {
     @ExceptionHandler(LoginInvalidException.class)
     public ProblemDetail handleLoginInvalidException(final LoginInvalidException exception) {
         return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    /**
+     * JSON malformado ou com shape errado é sempre erro do client, nunca do server -
+     * sem este handler, {@link #handleUnexpected} capturava primeiro (roda antes da
+     * resolução default do Spring MVC pra essa exceção) e devolvia 500 pra um payload
+     * simplesmente mal formado. Mesmo bug encontrado e corrigido no budget-service.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleMessageNotReadable(final HttpMessageNotReadableException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
     }
 
     @ExceptionHandler(Exception.class)
