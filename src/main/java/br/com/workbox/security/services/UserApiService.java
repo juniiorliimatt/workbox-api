@@ -5,6 +5,7 @@ import br.com.workbox.exceptions.LoginInvalidException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
 import br.com.workbox.exceptions.UserAlreadyExistsException;
 import br.com.workbox.security.dto.ChangePasswordDTO;
+import br.com.workbox.security.dto.RoleDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.dto.UserApiRegisterDTO;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author CLAUDE-CODE
@@ -247,6 +249,9 @@ public class UserApiService implements UserDetailsService {
 
     private UserApiDTO toDto(final UserApi user) {
         final var avatarUrl = user.getAvatarFilename() == null ? null : "/api/v1/user/" + user.getId() + "/avatar";
-        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled(), avatarUrl);
+        final var roles = user.getRoles().stream()
+                .map(role -> new RoleDTO(role.getId(), role.getAuthority()))
+                .collect(Collectors.toSet());
+        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled(), avatarUrl, roles);
     }
 }

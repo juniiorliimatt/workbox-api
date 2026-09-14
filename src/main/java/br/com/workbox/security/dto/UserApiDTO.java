@@ -3,6 +3,7 @@ package br.com.workbox.security.dto;
 import lombok.*;
 import org.springframework.hateoas.RepresentationModel;
 
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -24,5 +25,6 @@ public class UserApiDTO extends RepresentationModel<UserApiDTO> {
     private String email;
     private boolean enabled;
     private String avatarUrl;
+    private Set<RoleDTO> roles;
 
 }

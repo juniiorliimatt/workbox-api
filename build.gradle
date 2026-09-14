@@ -72,7 +72,7 @@ sonar {
 // Contrato de API (OpenAPI) versionado no repositório — fonte da verdade para
 // qualquer client (frontend, agentes de IA) que consuma esta API.
 openApi {
-    apiDocsUrl.set("http://localhost:8080/v3/api-docs.yaml")
+    apiDocsUrl.set("http://localhost:7051/v3/api-docs.yaml")
     outputDir.set(file("$rootDir/openapi"))
     outputFileName.set("openapi.yaml")
     waitTimeInSeconds.set(30)

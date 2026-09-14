@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.workbox.security.dto.RoleDTO;
 import br.com.workbox.security.dto.UserApiDTO;
 import br.com.workbox.security.dto.UserApiInsertOrUpdateDTO;
 import br.com.workbox.security.entities.Role;
@@ -81,7 +82,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName(value = "Get UserById")
     void testGetUserApiById() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null, Set.of(new RoleDTO(role.getId(), role.getAuthority())));
         when(userApiService.findById(this.id)).thenReturn(userApiDto);
 
         mockMvc.perform(get("/api/v1/user/" + this.id))
@@ -91,15 +92,28 @@ class UserApiControllerTest {
     }
 
     @Test
+    @DisplayName(value = "Get UserById — expõe as roles do usuário (regressão: UserApiDTO sem o campo)")
+    void testGetUserApiByIdExposesRoles() throws Exception {
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null, Set.of(new RoleDTO(role.getId(), role.getAuthority())));
+        when(userApiService.findById(this.id)).thenReturn(userApiDto);
+
+        mockMvc.perform(get("/api/v1/user/" + this.id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0].authority").value("TEST"))
+                .andExpect(jsonPath("$.roles[0].id").value(1));
+    }
+
+    @Test
     @DisplayName(value = "Pageable — repassa o query param search pro service")
     void testFindAllPageablePassesSearchThrough() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null, Set.of(new RoleDTO(role.getId(), role.getAuthority())));
         final var page = new org.springframework.data.domain.PageImpl<>(java.util.List.of(userApiDto));
         when(userApiService.findAll(eq("rocha"), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/user/pageable").param("search", "rocha"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].socialName").value(NAME));
+                .andExpect(jsonPath("$.content[0].socialName").value(NAME))
+                .andExpect(jsonPath("$.content[0].roles[0].authority").value("TEST"));
     }
 
     @Test
@@ -117,7 +131,7 @@ class UserApiControllerTest {
     @Test
     @DisplayName(value = "Save user — Location header aponta pro path real do recurso")
     void testSaveUserApi() throws Exception {
-        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null);
+        final var userApiDto = new UserApiDTO(userApi.getId(), userApi.getSocialName(), userApi.getEmail(), userApi.getIsEnabled(), null, Set.of(new RoleDTO(role.getId(), role.getAuthority())));
         // Role sem o back-reference `users` — só pra não estourar em recursão infinita na
         // serialização JSON do corpo da requisição (Role não tem @JsonIgnore/@JsonBackReference
         // em `users`, e UserApi.roles -> Role.users -> UserApi de novo).

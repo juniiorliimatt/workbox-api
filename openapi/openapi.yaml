@@ -590,6 +590,11 @@ components:
         id:
           type: string
           format: uuid
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleDTO"
+          uniqueItems: true
         socialName:
           type: string
     ForgotPasswordDTO:
@@ -968,6 +973,11 @@ components:
         id:
           type: string
           format: uuid
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleDTO"
+          uniqueItems: true
         socialName:
           type: string
     UserApiInsertOrUpdateDTO:

@@ -77,7 +77,7 @@ class AuthControllerTest {
         @DisplayName("cadastro válido delega ao UserApiService e responde 201")
         void createsUser() {
             final var dto = new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!");
-            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null);
+            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null, java.util.Set.of());
             when(userApiService.register(dto)).thenReturn(created);
 
             final var response = controller.register(dto, new MockHttpServletRequest());
