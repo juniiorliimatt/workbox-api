@@ -109,21 +109,26 @@ public class UserApiService implements UserDetailsService {
 
     @Transactional
     public UserApiDTO save(final UserApiInsertOrUpdateDTO dto) {
+        logger.info("save user");
+        final var user = new UserApi(dto);
+        user.setRoles(resolveRoles(dto.roles()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        final var userSaved = userApiRepository.save(user);
+        return toDto(userSaved);
+    }
+
+    /** Roles vêm do payload só com o id preenchido — resolve pra entidade gerenciada, nunca confia em nome/authority enviados pelo client. */
+    private Set<Role> resolveRoles(final Set<Role> requestedRoles) {
         logger.info("get role");
         final var roles = new HashSet<Role>();
-        for (Role role : dto.roles()) {
+        for (Role role : requestedRoles) {
             if (role.getId() == null) {
                 throw new InvalidRequestException("Role id is required");
             }
             Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
             roles.add(existingRole);
         }
-        logger.info("save user");
-        final var user = new UserApi(dto);
-        user.setRoles(roles);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        final var userSaved = userApiRepository.save(user);
-        return toDto(userSaved);
+        return roles;
     }
 
     /**
@@ -163,6 +168,9 @@ public class UserApiService implements UserDetailsService {
         }
         user.setEmail(dto.email());
         user.setIsEnabled(dto.isEnabled());
+        if (dto.roles() != null) {
+            user.setRoles(resolveRoles(dto.roles()));
+        }
         final var updated = userApiRepository.save(user);
         return toDto(updated);
     }

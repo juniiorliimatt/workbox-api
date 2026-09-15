@@ -452,6 +452,50 @@ class UserApiServiceTest {
         }
 
         @Test
+        @DisplayName("update aplica as roles recebidas no payload (regressão: roles não eram persistidas)")
+        void updateAppliesRequestedRoles() {
+            final var adminRole = Role.builder().id(1L).authority("ADMIN").build();
+            final var user = aUser().roles(Set.of(Role.builder().id(2L).authority("USER").build())).build();
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "Bob", null, "bob@example.com", true, Set.of(Role.builder().id(1L).build()));
+            when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
+            when(roleRepository.findById(1L)).thenReturn(Optional.of(adminRole));
+            when(userApiRepository.save(user)).thenReturn(user);
+
+            service.update(dto);
+
+            assertThat(user.getRoles()).containsExactly(adminRole);
+        }
+
+        @Test
+        @DisplayName("update sem roles no payload (null) preserva as roles atuais do usuário")
+        void updateWithNullRolesKeepsCurrentRoles() {
+            final var currentRoles = Set.of(Role.builder().id(2L).authority("USER").build());
+            final var user = aUser().roles(currentRoles).build();
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "Bob", null, "bob@example.com", true, null);
+            when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
+            when(userApiRepository.save(user)).thenReturn(user);
+
+            service.update(dto);
+
+            assertThat(user.getRoles()).isEqualTo(currentRoles);
+            verify(roleRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("update lança InvalidRequestException quando uma role vem sem id")
+        void updateThrowsWhenRoleIdMissing() {
+            final var user = aUser().build();
+            final var roleWithoutId = Role.builder().authority("ADMIN").build();
+            final var dto = new UserApiInsertOrUpdateDTO(user.getId(), "Bob", null, "bob@example.com", true, Set.of(roleWithoutId));
+            when(userApiRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> service.update(dto))
+                    .isInstanceOf(br.com.workbox.exceptions.InvalidRequestException.class)
+                    .hasMessage("Role id is required");
+            verify(userApiRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("delete lança ResourceNotFoundException quando o usuário não existe")
         void deleteThrowsWhenMissing() {
             final var id = UUID.randomUUID();
