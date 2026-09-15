@@ -52,7 +52,7 @@ public class PasswordRecoverySteps {
     }
 
     @Dado("um usuário habilitado {string} com senha {string} e e-mail {string}")
-    public void umUsuarioHabilitadoComSenhaEEmail(String username, String rawPassword, String email) {
+    public void umUsuarioHabilitadoComSenhaEEmail(final String username, final String rawPassword, final String email) {
         final var role = Role.builder().authority("USER").build();
         final var user = UserApi.builder()
                 .socialName(username)
@@ -68,7 +68,7 @@ public class PasswordRecoverySteps {
     }
 
     @Quando("eu peço recuperação de senha para o e-mail {string}")
-    public void euPecoRecuperacaoDeSenha(String email) throws Exception {
+    public void euPecoRecuperacaoDeSenha(final String email) throws Exception {
         final var body = objectMapper.writeValueAsString(new ForgotPasswordDTO(email));
         context.setResult(mockMvc.perform(post("/api/v1/auth/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +77,7 @@ public class PasswordRecoverySteps {
     }
 
     @Então("um e-mail de redefinição foi enviado para {string}")
-    public void umEmailDeRedefinicaoFoiEnviadoPara(String email) {
+    public void umEmailDeRedefinicaoFoiEnviadoPara(final String email) {
         final var message = capturingMailSender.getLastMessage();
         assertThat(message).isNotNull();
         assertThat(message.getTo()).contains(email);
@@ -88,7 +88,7 @@ public class PasswordRecoverySteps {
     }
 
     @Então("um e-mail de confirmação de redefinição foi enviado para {string}")
-    public void umEmailDeConfirmacaoDeRedefinicaoFoiEnviadoPara(String email) {
+    public void umEmailDeConfirmacaoDeRedefinicaoFoiEnviadoPara(final String email) {
         final var message = capturingMailSender.getLastMessage();
         assertThat(message).isNotNull();
         assertThat(message.getTo()).contains(email);
@@ -96,17 +96,17 @@ public class PasswordRecoverySteps {
     }
 
     @Quando("eu redefino a senha com o token recebido para {string}")
-    public void euRedefinoASenhaComTokenRecebido(String novaSenha) throws Exception {
+    public void euRedefinoASenhaComTokenRecebido(final String novaSenha) throws Exception {
         redefinirSenha(lastCapturedToken, novaSenha);
     }
 
     @Quando("eu redefino a senha com o token {string} para {string}")
-    public void euRedefinoASenhaComToken(String token, String novaSenha) throws Exception {
+    public void euRedefinoASenhaComToken(final String token, final String novaSenha) throws Exception {
         redefinirSenha(token, novaSenha);
     }
 
     @Então("eu consigo logar com usuário {string} e senha {string}")
-    public void euConsigoLogarComUsuarioESenha(String username, String password) throws Exception {
+    public void euConsigoLogarComUsuarioESenha(final String username, final String password) throws Exception {
         final var body = objectMapper.writeValueAsString(new UserApiLoginCredentialsDTO(username + "@example.com", password));
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -114,7 +114,7 @@ public class PasswordRecoverySteps {
                 .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
-    private void redefinirSenha(String token, String novaSenha) throws Exception {
+    private void redefinirSenha(final String token, final String novaSenha) throws Exception {
         final var body = objectMapper.writeValueAsString(new ResetPasswordDTO(token, novaSenha));
         context.setResult(mockMvc.perform(post("/api/v1/auth/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)

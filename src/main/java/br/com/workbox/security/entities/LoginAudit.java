@@ -41,7 +41,7 @@ public class LoginAudit {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    public static LoginAudit of(String email, boolean successful, String reason, String ipAddress) {
+    public static LoginAudit of(final String email, final boolean successful, final String reason, final String ipAddress) {
         return LoginAudit.builder()
                 .id(UUID.randomUUID())
                 .email(email)

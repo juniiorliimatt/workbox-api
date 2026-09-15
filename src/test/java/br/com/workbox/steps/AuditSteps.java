@@ -26,7 +26,7 @@ public class AuditSteps {
     private HttpResultContext context;
 
     @Quando("eu consulto o histórico de login do email {string}")
-    public void euConsultoOHistoricoDeLoginDoEmail(String email) throws Exception {
+    public void euConsultoOHistoricoDeLoginDoEmail(final String email) throws Exception {
         context.setResult(mockMvc.perform(get("/api/v1/audit/logins")
                         .param("email", email)
                         .header("Authorization", "Bearer " + context.getAccessToken()))
@@ -34,13 +34,13 @@ public class AuditSteps {
     }
 
     @Então("o histórico de login tem pelo menos {int} entradas")
-    public void oHistoricoDeLoginTemPeloMenosEntradas(int minimo) throws Exception {
+    public void oHistoricoDeLoginTemPeloMenosEntradas(final int minimo) throws Exception {
         final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
         assertThat(json.get("content").size()).isGreaterThanOrEqualTo(minimo);
     }
 
     @Quando("eu consulto o histórico de alterações do usuário {string}")
-    public void euConsultoOHistoricoDeAlteracoesDoUsuario(String username) throws Exception {
+    public void euConsultoOHistoricoDeAlteracoesDoUsuario(final String username) throws Exception {
         final var user = userApiRepository.findByEmail(username + "@example.com")
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado pra teste: " + username));
         context.setResult(mockMvc.perform(get("/api/v1/audit/users/" + user.getId() + "/history")
@@ -49,7 +49,7 @@ public class AuditSteps {
     }
 
     @Então("o histórico de alterações tem pelo menos {int} revisão do tipo {string}")
-    public void oHistoricoDeAlteracoesTemPeloMenosRevisaoDoTipo(int minimo, String revisionType) throws Exception {
+    public void oHistoricoDeAlteracoesTemPeloMenosRevisaoDoTipo(final int minimo, final String revisionType) throws Exception {
         final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
         long count = 0;
         for (final JsonNode node : json) {

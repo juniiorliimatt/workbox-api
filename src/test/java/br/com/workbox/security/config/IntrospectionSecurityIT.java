@@ -145,7 +145,7 @@ class IntrospectionSecurityIT {
      * depender de {@code RoleRepository.findByAuthority("USER")} — a introspecção não
      * precisa de role nenhuma persistida, só de um usuário utilizável.
      */
-    private UserApi registerUser(String email) {
+    private UserApi registerUser(final String email) {
         final var user = UserApi.builder()
                 .socialName("Introspect Test")
                 .email(email)

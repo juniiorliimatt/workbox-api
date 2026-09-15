@@ -7,7 +7,7 @@ package br.com.workbox.exceptions;
  */
 
 public class InvalidRequestException extends RuntimeException {
-    public InvalidRequestException(String message) {
+    public InvalidRequestException(final String message) {
         super(message);
     }
 }

@@ -7,10 +7,10 @@ package br.com.workbox.exceptions;
  */
 
 public class InvalidTokenException extends RuntimeException {
-    public InvalidTokenException(String message) {
+    public InvalidTokenException(final String message) {
         super(message);
     }
-    public InvalidTokenException(String message, Throwable cause) {
+    public InvalidTokenException(final String message, final Throwable cause) {
         super(message, cause);
     }
 }

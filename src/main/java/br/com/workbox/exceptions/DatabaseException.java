@@ -7,7 +7,7 @@ package br.com.workbox.exceptions;
  */
 
 public class DatabaseException extends RuntimeException {
-    public DatabaseException(String message) {
+    public DatabaseException(final String message) {
         super(message);
     }
 }

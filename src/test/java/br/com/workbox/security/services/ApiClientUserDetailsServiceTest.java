@@ -26,7 +26,7 @@ class ApiClientUserDetailsServiceTest {
         service = new ApiClientUserDetailsService(apiClientRepository);
     }
 
-    private ApiClient client(Set<ApiClientGrantType> grantTypes) {
+    private ApiClient client(final Set<ApiClientGrantType> grantTypes) {
         return ApiClient.builder()
                 .clientId("budget-service")
                 .clientSecretHash("hash")

@@ -145,7 +145,7 @@ public class UserApi implements UserDetails {
     @LastModifiedBy
     private String updatedBy;
 
-    public UserApi(UserApiInsertOrUpdateDTO dto) {
+    public UserApi(final UserApiInsertOrUpdateDTO dto) {
         this.socialName = dto.socialName();
         this.password = dto.password();
         this.email = dto.email();

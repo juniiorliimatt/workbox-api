@@ -23,7 +23,7 @@ public class HttpResultContext {
         return result;
     }
 
-    public void setResult(MvcResult result) {
+    public void setResult(final MvcResult result) {
         this.result = result;
     }
 
@@ -31,7 +31,7 @@ public class HttpResultContext {
         return accessToken;
     }
 
-    public void setAccessToken(String accessToken) {
+    public void setAccessToken(final String accessToken) {
         this.accessToken = accessToken;
     }
 }

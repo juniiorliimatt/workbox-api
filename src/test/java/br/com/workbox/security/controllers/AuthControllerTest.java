@@ -53,7 +53,7 @@ class AuthControllerTest {
         when(loginRateLimiter.isAllowed(anyString())).thenReturn(true);
     }
 
-    private UserApi user(boolean mfaEnabled) {
+    private UserApi user(final boolean mfaEnabled) {
         return UserApi.builder().id(UUID.randomUUID()).socialName("Alice").email("alice@example.com").password("hash")
                 .isEnabled(true).isAccountNonExpired(true).isAccountNonLocked(true).isCredentialsNonExpired(true)
                 .tokenVersion(0L).mfaEnabled(mfaEnabled).build();

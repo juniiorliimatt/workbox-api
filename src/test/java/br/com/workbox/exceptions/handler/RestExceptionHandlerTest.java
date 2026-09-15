@@ -221,7 +221,7 @@ class RestExceptionHandlerTest {
 
     @SuppressWarnings("unused")
     private static final class DummyValidatedEndpoint {
-        void handle(String username) {
+        void handle(final String username) {
         }
     }
 }

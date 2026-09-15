@@ -52,7 +52,7 @@ class JwtServiceTest {
         SecurityContextHolder.clearContext();
     }
 
-    private UserApi enabledUser(String email) {
+    private UserApi enabledUser(final String email) {
         return UserApi.builder()
                 .id(UUID.randomUUID())
                 .socialName("Test User")
@@ -67,7 +67,7 @@ class JwtServiceTest {
                 .build();
     }
 
-    private String rawToken(String typ, String subject, long validityMs, long tokenVersion) {
+    private String rawToken(final String typ, final String subject, final long validityMs, final long tokenVersion) {
         final var claims = new HashMap<String, Object>();
         claims.put("typ", typ);
         claims.put("tv", tokenVersion);
@@ -195,7 +195,7 @@ class JwtServiceTest {
             org.mockito.Mockito.verifyNoInteractions(userApiService);
         }
 
-        private void runFilter(String bearerToken) throws Exception {
+        private void runFilter(final String bearerToken) throws Exception {
             final var request = new MockHttpServletRequest();
             request.addHeader("Authorization", "Bearer " + bearerToken);
             final var response = new MockHttpServletResponse();
@@ -206,7 +206,7 @@ class JwtServiceTest {
             verify(chain).doFilter(request, response);
         }
 
-        private void assertThatNoException(ThrowingRunnable runnable) throws Exception {
+        private void assertThatNoException(final ThrowingRunnable runnable) throws Exception {
             runnable.run();
         }
 

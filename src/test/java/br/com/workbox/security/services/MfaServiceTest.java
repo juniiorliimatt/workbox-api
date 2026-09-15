@@ -35,7 +35,7 @@ class MfaServiceTest {
         return UserApi.builder().id(UUID.randomUUID()).socialName("Alice").email("alice@example.com").password("hash").build();
     }
 
-    private String currentCode(String secret) throws Exception {
+    private String currentCode(final String secret) throws Exception {
         return codeGenerator.generate(secret, Instant.now().getEpochSecond() / TIME_PERIOD_SECONDS);
     }
 

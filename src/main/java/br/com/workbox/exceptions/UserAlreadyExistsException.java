@@ -7,7 +7,7 @@ package br.com.workbox.exceptions;
  */
 
 public class UserAlreadyExistsException extends RuntimeException {
-    public UserAlreadyExistsException(String message) {
+    public UserAlreadyExistsException(final String message) {
         super(message);
     }
 }

@@ -18,7 +18,7 @@ public class CapturingMailSender extends JavaMailSenderImpl {
     private final List<SimpleMailMessage> messages = new ArrayList<>();
 
     @Override
-    public void send(SimpleMailMessage simpleMessage) {
+    public void send(final SimpleMailMessage simpleMessage) {
         messages.add(simpleMessage);
     }
 

@@ -47,7 +47,7 @@ public class RoleManagementSteps {
     private final Map<String, Long> roleIdsByAuthority = new HashMap<>();
 
     @Dado("um usuário habilitado {string} com senha {string} e a role {string}")
-    public void umUsuarioHabilitadoComSenhaEARole(String username, String rawPassword, String authority) {
+    public void umUsuarioHabilitadoComSenhaEARole(final String username, final String rawPassword, final String authority) {
         // Role sempre transiente (id nulo) — anexar uma Role já persistida (detached)
         // aqui dispara PersistentObjectException no cascade PERSIST de UserApi.roles.
         final var role = Role.builder().authority(authority).build();
@@ -66,7 +66,7 @@ public class RoleManagementSteps {
     }
 
     @Quando("eu crio a role {string}")
-    public void euCrioARole(String authority) throws Exception {
+    public void euCrioARole(final String authority) throws Exception {
         final var body = objectMapper.writeValueAsString(new RoleDTO(null, authority));
         context.setResult(mockMvc.perform(post("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken())
@@ -81,7 +81,7 @@ public class RoleManagementSteps {
     }
 
     @Quando("eu atualizo a role {string} para {string}")
-    public void euAtualizoARolePara(String authorityAtual, String novaAuthority) throws Exception {
+    public void euAtualizoARolePara(final String authorityAtual, final String novaAuthority) throws Exception {
         final var id = roleIdsByAuthority.computeIfAbsent(authorityAtual.toUpperCase(), key -> roleRepository.findAll().stream()
                 .filter(role -> key.equals(role.getAuthority()))
                 .findFirst()
@@ -97,7 +97,7 @@ public class RoleManagementSteps {
     }
 
     @Quando("eu removo a role {string}")
-    public void euRemovoARole(String authority) throws Exception {
+    public void euRemovoARole(final String authority) throws Exception {
         final var id = roleIdsByAuthority.get(authority.toUpperCase());
         context.setResult(mockMvc.perform(delete("/api/v1/role/" + id)
                         .header("Authorization", "Bearer " + context.getAccessToken()))
@@ -112,7 +112,7 @@ public class RoleManagementSteps {
     }
 
     @Então("a role {string} aparece na listagem")
-    public void aRoleApareceNaListagem(String authority) throws Exception {
+    public void aRoleApareceNaListagem(final String authority) throws Exception {
         final var response = mockMvc.perform(get("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn().getResponse().getContentAsString();
@@ -120,7 +120,7 @@ public class RoleManagementSteps {
     }
 
     @Então("a role {string} não aparece mais na listagem")
-    public void aRoleNaoApareceMaisNaListagem(String authority) throws Exception {
+    public void aRoleNaoApareceMaisNaListagem(final String authority) throws Exception {
         final var response = mockMvc.perform(get("/api/v1/role")
                         .header("Authorization", "Bearer " + context.getAccessToken()))
                 .andReturn().getResponse().getContentAsString();

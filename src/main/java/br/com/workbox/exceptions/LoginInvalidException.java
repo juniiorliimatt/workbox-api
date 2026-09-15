@@ -7,7 +7,7 @@ package br.com.workbox.exceptions;
  */
 
 public class LoginInvalidException extends RuntimeException {
-    public LoginInvalidException(String message) {
+    public LoginInvalidException(final String message) {
         super(message);
     }
 }

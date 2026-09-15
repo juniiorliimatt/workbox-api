@@ -40,23 +40,23 @@ public class AuthenticationSteps {
     private HttpResultContext context;
 
     @Dado("um usuário habilitado {string} com senha {string}")
-    public void umUsuarioHabilitadoComSenha(String username, String rawPassword) {
+    public void umUsuarioHabilitadoComSenha(final String username, final String rawPassword) {
         criarUsuario(username, rawPassword, true);
     }
 
     @Dado("um usuário desabilitado {string} com senha {string}")
-    public void umUsuarioDesabilitadoComSenha(String username, String rawPassword) {
+    public void umUsuarioDesabilitadoComSenha(final String username, final String rawPassword) {
         criarUsuario(username, rawPassword, false);
     }
 
     @Quando("eu tento autenticar com usuário {string} e senha {string}")
-    public void euTentoAutenticarComUsuarioESenha(String username, String password) throws Exception {
+    public void euTentoAutenticarComUsuarioESenha(final String username, final String password) throws Exception {
         context.setResult(login(username, password));
         capturarAccessTokenSeSucesso();
     }
 
     @Quando("eu tento autenticar sem sucesso {int} vezes com usuário {string} e senha errada")
-    public void euTentoAutenticarSemSucessoVezes(int vezes, String username) throws Exception {
+    public void euTentoAutenticarSemSucessoVezes(final int vezes, final String username) throws Exception {
         for (int i = 0; i < vezes; i++) {
             context.setResult(login(username, "senha-definitivamente-errada"));
         }
@@ -77,7 +77,7 @@ public class AuthenticationSteps {
     }
 
     @Quando("eu tento trocar minha senha de {string} para {string}")
-    public void euTentoTrocarMinhaSenha(String senhaAtual, String novaSenha) throws Exception {
+    public void euTentoTrocarMinhaSenha(final String senhaAtual, final String novaSenha) throws Exception {
         final var body = objectMapper.writeValueAsString(
                 new br.com.workbox.security.dto.ChangePasswordDTO(senhaAtual, novaSenha));
 
@@ -89,7 +89,7 @@ public class AuthenticationSteps {
     }
 
     @Então("a resposta é {string}")
-    public void aRespostaE(String expectedStatus) {
+    public void aRespostaE(final String expectedStatus) {
         final var actual = HttpStatus.valueOf(context.getResult().getResponse().getStatus());
         assertThat(actual).isEqualTo(HttpStatus.valueOf(expectedStatus));
     }
@@ -115,7 +115,7 @@ public class AuthenticationSteps {
     }
 
     @Então("recebo meu perfil com nome {string}")
-    public void reboMeuPerfilComNome(String name) throws Exception {
+    public void reboMeuPerfilComNome(final String name) throws Exception {
         assertThat(context.getResult().getResponse().getStatus()).isEqualTo(HttpStatus.OK.value());
         final JsonNode json = objectMapper.readTree(context.getResult().getResponse().getContentAsString());
         assertThat(json.get("socialName").asText()).isEqualTo(name);
@@ -127,7 +127,7 @@ public class AuthenticationSteps {
                 .andExpect(MockMvcResultMatchers.status().isUnauthorized());
     }
 
-    private MvcResult login(String username, String password) throws Exception {
+    private MvcResult login(final String username, final String password) throws Exception {
         final var body = objectMapper.writeValueAsString(
                 new br.com.workbox.security.dto.UserApiLoginCredentialsDTO(username + "@example.com", password));
 
@@ -149,7 +149,7 @@ public class AuthenticationSteps {
         }
     }
 
-    private void criarUsuario(String username, String rawPassword, boolean enabled) {
+    private void criarUsuario(final String username, final String rawPassword, final boolean enabled) {
         final var role = Role.builder().authority("USER").build();
         final var user = UserApi.builder()
                 .socialName(username)

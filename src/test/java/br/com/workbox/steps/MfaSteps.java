@@ -74,11 +74,11 @@ public class MfaSteps {
     }
 
     @Quando("eu envio o código {string} de MFA")
-    public void euEnvioOCodigoDeMfa(String code) throws Exception {
+    public void euEnvioOCodigoDeMfa(final String code) throws Exception {
         enviarCodigoDeMfa(code);
     }
 
-    private void enviarCodigoDeMfa(String code) throws Exception {
+    private void enviarCodigoDeMfa(final String code) throws Exception {
         final var body = objectMapper.writeValueAsString(new MfaLoginDTO(mfaToken, code));
         context.setResult(mockMvc.perform(post("/api/v1/auth/mfa/login")
                         .contentType(MediaType.APPLICATION_JSON)

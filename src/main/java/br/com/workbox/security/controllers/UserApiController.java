@@ -39,7 +39,7 @@ public class UserApiController {
     private final AvatarService avatarService;
 
     @Autowired
-    public UserApiController(UserApiService userApiService, AvatarService avatarService) {
+    public UserApiController(final UserApiService userApiService, final AvatarService avatarService) {
         this.userApiService = userApiService;
         this.avatarService = avatarService;
     }
@@ -55,7 +55,7 @@ public class UserApiController {
     @GetMapping("/pageable")
     @Parameter(name = "search", description = "Filtro por substring (case-insensitive) em socialName ou email", required = false)
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Page<UserApiDTO>> findAllPageable(@RequestParam(required = false) String search, Pageable pageable) {
+    public ResponseEntity<Page<UserApiDTO>> findAllPageable(@RequestParam(required = false) final String search, final Pageable pageable) {
         return ResponseEntity.ok(userApiService.findAll(search, pageable));
     }
 
@@ -65,11 +65,11 @@ public class UserApiController {
     public ResponseEntity<CollectionModel<UserApiDTO>> findAll() {
         final var list = userApiService.findAll();
         for (UserApiDTO userDto : list) {
-            var userId = userDto.getId();
-            Link selfLink = linkTo(UserApiController.class).slash(userId).withSelfRel();
+            final var userId = userDto.getId();
+            final Link selfLink = linkTo(UserApiController.class).slash(userId).withSelfRel();
             userDto.add(selfLink);
         }
-        Link link = linkTo(UserApiController.class).withSelfRel();
+        final Link link = linkTo(UserApiController.class).withSelfRel();
         final var result = CollectionModel.of(list, link);
         return ResponseEntity.ok().body(result);
     }
@@ -77,9 +77,9 @@ public class UserApiController {
     @GetMapping("/{id}")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<EntityModel<UserApiDTO>> findById(@PathVariable UUID id) {
+    public ResponseEntity<EntityModel<UserApiDTO>> findById(@PathVariable final UUID id) {
         final var list = userApiService.findById(id);
-        EntityModel<UserApiDTO> resource = EntityModel.of(list);
+        final EntityModel<UserApiDTO> resource = EntityModel.of(list);
         resource.add(linkTo(methodOn(UserApiController.class).findById(id)).withSelfRel());
         resource.add(linkTo(methodOn(UserApiController.class).findAll()).withRel("all-users"));
         return ResponseEntity.ok().body(resource);
@@ -87,7 +87,7 @@ public class UserApiController {
 
     @GetMapping("/{id}/avatar")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<byte[]> getAvatar(@PathVariable UUID id) {
+    public ResponseEntity<byte[]> getAvatar(@PathVariable final UUID id) {
         final var content = avatarService.load(id);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(content.contentType())).body(content.bytes());
     }
@@ -97,7 +97,7 @@ public class UserApiController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<UserApiDTO> save(@RequestBody @Valid final UserApiInsertOrUpdateDTO userApiInsertOrUpdateDTO, final UriComponentsBuilder uriBuilder) {
         final var newUser = userApiService.save(userApiInsertOrUpdateDTO);
-        URI uri = uriBuilder.path("/api/v1/user/{id}").buildAndExpand(newUser.getId()).toUri();
+        final URI uri = uriBuilder.path("/api/v1/user/{id}").buildAndExpand(newUser.getId()).toUri();
         return ResponseEntity.created(uri).body(newUser);
     }
 

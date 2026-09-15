@@ -26,7 +26,7 @@ public class ApiClientUserDetailsService implements UserDetailsService {
 
     private final ApiClientRepository apiClientRepository;
 
-    public ApiClientUserDetailsService(ApiClientRepository apiClientRepository) {
+    public ApiClientUserDetailsService(final ApiClientRepository apiClientRepository) {
         this.apiClientRepository = apiClientRepository;
     }
 

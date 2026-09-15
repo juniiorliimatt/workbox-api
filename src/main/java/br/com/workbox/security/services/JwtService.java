@@ -63,7 +63,7 @@ public class JwtService extends OncePerRequestFilter {
     private final RefreshTokenService refreshTokenService;
 
     @Autowired
-    public JwtService(SecretKey secretKey, UserApiService userApiService, RefreshTokenService refreshTokenService) {
+    public JwtService(final SecretKey secretKey, final UserApiService userApiService, final RefreshTokenService refreshTokenService) {
         this.secretKey = secretKey;
         this.userApiService = userApiService;
         this.refreshTokenService = refreshTokenService;
@@ -88,7 +88,7 @@ public class JwtService extends OncePerRequestFilter {
         claims.put(TOKEN_VERSION_CLAIM, tokenVersionOf(user));
         claims.put("roles", user.getAuthorities().stream()
                 .map(grantedAuthority -> {
-                    String authority = grantedAuthority.getAuthority();
+                    final String authority = grantedAuthority.getAuthority();
                     return authority.startsWith("ROLE_") ? authority : "ROLE_" + authority;
                 })
                 .toList());
@@ -196,7 +196,7 @@ public class JwtService extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(final HttpServletRequest request, @NonNull final HttpServletResponse response, @NonNull final FilterChain filterChain) throws ServletException, IOException {
         final var authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final var token = authHeader.substring(7);
@@ -218,7 +218,7 @@ public class JwtService extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private io.jsonwebtoken.Claims parseRefreshTokenClaims(String refreshToken) {
+    private io.jsonwebtoken.Claims parseRefreshTokenClaims(final String refreshToken) {
         try {
             return Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(refreshToken).getBody();
         } catch (InvalidRefreshTokenException e) {
@@ -228,7 +228,7 @@ public class JwtService extends OncePerRequestFilter {
         }
     }
 
-    private UsernamePasswordAuthenticationToken getAuthentication(String token) {
+    private UsernamePasswordAuthenticationToken getAuthentication(final String token) {
         try {
             final var resolved = resolveAccessToken(token);
             if (resolved == null) {
@@ -297,7 +297,7 @@ public class JwtService extends OncePerRequestFilter {
         }
     }
 
-    private boolean isAccountUsable(UserDetails userDetails) {
+    private boolean isAccountUsable(final UserDetails userDetails) {
         return userDetails.isEnabled()
                 && userDetails.isAccountNonLocked()
                 && userDetails.isAccountNonExpired()

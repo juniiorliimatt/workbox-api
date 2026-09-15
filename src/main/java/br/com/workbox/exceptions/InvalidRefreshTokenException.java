@@ -8,11 +8,11 @@ package br.com.workbox.exceptions;
 
 public class InvalidRefreshTokenException extends RuntimeException {
 
-    public InvalidRefreshTokenException(String message) {
+    public InvalidRefreshTokenException(final String message) {
         super(message);
     }
 
-    public InvalidRefreshTokenException(String message, Throwable cause) {
+    public InvalidRefreshTokenException(final String message, final Throwable cause) {
         super(message, cause);
     }
 

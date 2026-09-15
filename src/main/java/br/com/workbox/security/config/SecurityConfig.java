@@ -61,10 +61,10 @@ public class SecurityConfig {
     private final ApiClientUserDetailsService apiClientUserDetailsService;
 
     @Autowired
-    public SecurityConfig(Environment env, JwtService jwtService,
-                           UserApiService userApiService, ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-                           OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, ObjectMapper objectMapper,
-                           ApiClientUserDetailsService apiClientUserDetailsService) {
+    public SecurityConfig(final Environment env, final JwtService jwtService,
+                           final UserApiService userApiService, final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+                           final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, final ObjectMapper objectMapper,
+                           final ApiClientUserDetailsService apiClientUserDetailsService) {
         this.env = env;
         this.jwtService = jwtService;
         this.userApiService = userApiService;
@@ -90,7 +90,7 @@ public class SecurityConfig {
      */
     @Bean
     @Order(1)
-    public SecurityFilterChain introspectionFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public SecurityFilterChain introspectionFilterChain(final HttpSecurity httpSecurity) throws Exception {
         httpSecurity.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(API_INTROSPECT))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -102,7 +102,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
         configureHeadersForTestProfile(httpSecurity);
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
         httpSecurity.httpBasic(AbstractHttpConfigurer::disable);
@@ -174,7 +174,7 @@ public class SecurityConfig {
         objectMapper.writeValue(response.getOutputStream(), ProblemDetail.forStatusAndDetail(status, detail));
     }
 
-    private void configureHeadersForTestProfile(HttpSecurity httpSecurity) throws Exception {
+    private void configureHeadersForTestProfile(final HttpSecurity httpSecurity) throws Exception {
         if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
             httpSecurity.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
         }
@@ -182,7 +182,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();
+        final CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();
         // Origin enviado pelo browser nunca tem barra final — CorsConfiguration faz match exato.
         configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:7053","http://localhost:7053"));
         configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));

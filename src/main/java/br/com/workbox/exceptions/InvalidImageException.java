@@ -7,10 +7,10 @@ package br.com.workbox.exceptions;
  */
 
 public class InvalidImageException extends RuntimeException {
-    public InvalidImageException(String message) {
+    public InvalidImageException(final String message) {
         super(message);
     }
-    public InvalidImageException(String message, Throwable cause) {
+    public InvalidImageException(final String message, final Throwable cause) {
         super(message, cause);
     }
 }

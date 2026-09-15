@@ -21,13 +21,13 @@ public class AuditorAwareImpl implements AuditorAware<String> {
 
     @Override
     public @NonNull Optional<String> getCurrentAuditor() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();
         }
 
-        Object principal = authentication.getPrincipal();
+        final Object principal = authentication.getPrincipal();
 
         if (principal instanceof Jwt jwt) {
             return Optional.of(jwt.getClaimAsString("sub"));

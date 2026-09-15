@@ -47,7 +47,7 @@ class UserApiSearchIT {
         userApiRepository.save(user("Carla Alves", "carla.alves@example.com"));
     }
 
-    private UserApi user(String socialName, String email) {
+    private UserApi user(final String socialName, final String email) {
         return UserApi.builder()
                 .socialName(socialName)
                 .email(email)
@@ -94,7 +94,7 @@ class UserApiSearchIT {
         assertThat(emailsOf(userApiService.findAll("  ", PageRequest.of(0, 1000)))).containsAll(expected);
     }
 
-    private List<String> emailsOf(Page<UserApiDTO> page) {
+    private List<String> emailsOf(final Page<UserApiDTO> page) {
         return page.getContent().stream().map(UserApiDTO::getEmail).toList();
     }
 

@@ -125,7 +125,7 @@ public class UserApiService implements UserDetailsService {
             if (role.getId() == null) {
                 throw new InvalidRequestException("Role id is required");
             }
-            Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+            final Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
             roles.add(existingRole);
         }
         return roles;

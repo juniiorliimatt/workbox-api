@@ -35,6 +35,7 @@ Role: Principal Software Architect & Tech Lead (Terminal & CLI Mode)
 - **Arquitetura**: Clean Architecture / Hexagonal; inversão de dependência estrita; imutabilidade por padrão.
 - **`Optional<T>`**: Restrito a retornos de métodos para representar ausência de valor (nunca em atributos, parâmetros ou coleções).
 - **Lombok**: Apenas se já declarado nas dependências do projeto ou explicitamente solicitado.
+- **`final` obrigatório**: todo parâmetro de método/construtor e toda variável local (`final var`/tipo explícito) devem ser `final`, exceto quando a variável precisa mesmo ser reatribuída (contador de loop clássico, acumulador, etc.). Aplica-se a `src/main` e `src/test`. Convenção retroativa aplicada a todo o projeto via OpenRewrite (`org.openrewrite.staticanalysis.FinalizeLocalVariables` + `FinalizeMethodArguments`, usado só como ferramenta pontual — não fica como dependência do build); qualquer código novo já deve nascer em conformidade.
 
 ### Node.js & TypeScript
 - **Baseline**: Node.js 20+ LTS.

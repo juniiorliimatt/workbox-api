@@ -31,23 +31,23 @@ public class RoleController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RoleDTO> findById(@PathVariable Long id) {
+    public ResponseEntity<RoleDTO> findById(@PathVariable final Long id) {
         return ResponseEntity.ok(roleService.findById(id));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<RoleDTO> create(@RequestBody @Valid RoleDTO dto) {
+    public ResponseEntity<RoleDTO> create(@RequestBody @Valid final RoleDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RoleDTO> update(@PathVariable Long id, @RequestBody @Valid RoleDTO dto) {
+    public ResponseEntity<RoleDTO> update(@PathVariable final Long id, @RequestBody @Valid final RoleDTO dto) {
         return ResponseEntity.ok(roleService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable final Long id) {
         roleService.delete(id);
         return ResponseEntity.noContent().build();
     }

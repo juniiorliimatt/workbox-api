@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class WorkBoxApplication {
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         SpringApplication.run(WorkBoxApplication.class, args);
     }
 }
