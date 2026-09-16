@@ -46,18 +46,19 @@ Profiles disponíveis (`spring.profiles.active`):
 
 | Profile | Banco | Uso |
 |---|---|---|
-| `test` | H2 em memória, schema criado via Hibernate (`ddl-auto=create-drop`) | Testes automatizados, geração do contrato OpenAPI — não precisa de Postgres |
-| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:7050/workbox`) | Desenvolvimento — schema via Liquibase |
-| `prod` | PostgreSQL via `DATABASE_URL` (obrigatório) | Deploy |
+| `test` | H2 em memória, schema criado via Hibernate (`ddl-auto=create-drop`) | Testes automatizados, geração do contrato OpenAPI — não precisa de Postgres nem Redis (cenários Cucumber que emitem refresh token sobem seu próprio Redis descartável via Testcontainers, exige Docker disponível) |
+| `dev` (default) | PostgreSQL local via `DATABASE_URL` (default `jdbc:postgresql://localhost:7050/workbox`) + Redis via `REDIS_HOST`/`REDIS_PORT` (default `localhost:7056`) | Desenvolvimento — schema via Liquibase |
+| `prod` | PostgreSQL via `DATABASE_URL` (obrigatório) + Redis via `REDIS_HOST` (obrigatório) | Deploy |
 
 ```bash
-./gradlew bootRun                                    # profile dev, exige Postgres local
+./gradlew bootRun                                    # profile dev, exige Postgres + Redis locais
 ./gradlew bootRun --args='--spring.profiles.active=test'  # sem dependência externa
 ```
 
 Variáveis de ambiente relevantes: `PORT` (default 7051), `JWT_SECRET`, `DATABASE_URL`,
 `POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_service`/`workbox_service` — role
-restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default `workbox`).
+restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default `workbox`),
+`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` (ver [Refresh tokens (Redis)](#refresh-tokens-redis)).
 
 Postgres local sobe via `docker-compose.yml` na raiz do monorepo (ver [README
 raiz](../README.md#rodando-localmente)) na porta **7050**, não 5432 — passe
@@ -148,6 +149,26 @@ subida da aplicação.
 Toda tentativa de login (sucesso ou falha) fica em `login_audit`. Mudanças em `UserApi`/
 `Role` ficam versionadas via Hibernate Envers (`users_api_aud`/`roles_aud` + `rev_info`,
 quem mudou vem do `SecurityContext`).
+
+### Refresh tokens (Redis)
+
+Migrado de Postgres pra Redis (2026-09-16) — `RefreshTokenService` guarda
+`refresh:{jti}` (hash: `family_id`/`user_id`/`revoked`, TTL nativo = tempo até expirar) e
+`family:{familyId}` (set de jti's da cadeia de rotação, mesma TTL). TTL nativo elimina o
+antigo job de cleanup agendado (SQL em lote diário) e o crescimento ilimitado da tabela.
+
+Detecção de reuso + revogação de família inteira roda **atômica** num único script Lua
+(`consume_refresh_token.lua`, `RedisConfig`) — sem isso, duas chamadas concorrentes de
+refresh com o mesmo jti poderiam ambas ler "não revogado" antes de qualquer uma escrever,
+derrotando a rotação sob corrida (scripts Lua são single-threaded no servidor Redis).
+
+`tokenVersion` **continua em Postgres**, não foi migrado: `resolveAccessToken` já
+recarrega o `UserApi` inteiro do banco em toda validação de token (pra checar
+`isEnabled`/`isAccountNonLocked`/etc.), então cachear só `tokenVersion` em Redis não
+eliminaria esse round-trip — seria complexidade nova sem ganho de latência real. Também
+evita quebrar a atomicidade que hoje existe de graça: o bump de `tokenVersion` acontece
+na mesma transação JPA da troca de senha/reset, então uma falha no meio do caminho nunca
+deixa sessão antiga válida com senha já trocada.
 
 ### Clientes de introspecção (resource servers)
 

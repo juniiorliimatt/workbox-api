@@ -1,44 +1,59 @@
 package br.com.workbox.security.services;
 
-import br.com.workbox.security.entities.RefreshToken;
-import br.com.workbox.security.repositories.RefreshTokenRepository;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Bookkeeping transacional de refresh tokens (persistência da família/jti), separado do
- * {@link JwtService} de propósito: {@code JwtService} estende {@code OncePerRequestFilter}
- * ({@code GenericFilterBean}), e anotar {@code @Transactional} diretamente nele força o
- * Spring a criar um proxy CGLIB da classe — proxy que, instanciado via Objenesis, nunca
- * roda o inicializador de campo {@code logger} de {@code GenericFilterBean}, e quebra
- * {@code Filter.init(FilterConfig)} com NPE assim que o container (ou o MockMvc em
- * teste) inicializa o filtro. Serviço plano (sem herança de Filter) não tem esse problema.
+ * Bookkeeping de refresh tokens (jti/família/expiração) via Redis em vez de Postgres —
+ * TTL nativo por chave substitui o antigo {@code RefreshTokenCleanupJob} (SQL em lote
+ * diário), e a detecção de reuso + revogação de família roda atômica num único script
+ * Lua ({@code consume_refresh_token.lua}), evitando a corrida que uma leitura+escrita em
+ * duas chamadas JPA separadas permitiria sob concorrência.
+ *
+ * <p>Chaves: {@code refresh:{jti}} (hash: family_id/user_id/revoked, TTL = tempo até
+ * expiresAt) e {@code family:{familyId}} (set de jti's da cadeia de rotação, mesma TTL —
+ * reaplicada a cada {@link #issue}, então acompanha o último token vivo da família).
+ *
+ * <p>Separado do {@link JwtService} pelo mesmo motivo de antes (ver histórico): não é um
+ * requisito do Redis, é herdado do design original que evitava proxy CGLIB num
+ * {@code OncePerRequestFilter}.
  *
  * @author CLAUDE-CODE
- * @author Junior Lima - oojuniin@outlook.com
- * @since 29-08-2026
+ * @author Junior Lima - oojuniiin@outlook.com
+ * @since 16/09/2026
  */
 @Service
 public class RefreshTokenService {
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private static final String REFRESH_KEY_PREFIX = "refresh:";
+    private static final String FAMILY_KEY_PREFIX = "family:";
 
-    public RefreshTokenService(final RefreshTokenRepository refreshTokenRepository) {
-        this.refreshTokenRepository = refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final RedisScript<List> consumeRefreshTokenScript;
+
+    public RefreshTokenService(final StringRedisTemplate redisTemplate, final RedisScript<List> consumeRefreshTokenScript) {
+        this.redisTemplate = redisTemplate;
+        this.consumeRefreshTokenScript = consumeRefreshTokenScript;
     }
 
-    @Transactional
     public void issue(final UUID userId, final UUID familyId, final UUID jti, final LocalDateTime expiresAt) {
-        refreshTokenRepository.save(RefreshToken.builder()
-                .id(UUID.randomUUID())
-                .jti(jti)
-                .familyId(familyId)
-                .userId(userId)
-                .issuedAt(LocalDateTime.now())
-                .expiresAt(expiresAt)
-                .build());
+        final var ttl = Duration.between(LocalDateTime.now(), expiresAt);
+        final var refreshKey = REFRESH_KEY_PREFIX + jti;
+        redisTemplate.opsForHash().putAll(refreshKey, Map.of(
+                "family_id", familyId.toString(),
+                "user_id", userId.toString(),
+                "revoked", "false"));
+        redisTemplate.expire(refreshKey, ttl);
+
+        final var familyKey = FAMILY_KEY_PREFIX + familyId;
+        redisTemplate.opsForSet().add(familyKey, jti.toString());
+        redisTemplate.expire(familyKey, ttl);
     }
 
     public enum RotationStatus { OK, REUSED, NOT_FOUND }
@@ -47,30 +62,18 @@ public class RefreshTokenService {
     }
 
     /**
-     * Consome (revoga) o jti apresentado, ou detecta reuso e revoga a família inteira.
+     * Consome (revoga) o jti apresentado, ou detecta reuso e revoga a família inteira —
+     * tudo dentro de {@link #consumeRefreshTokenScript}, atômico.
      */
-    @Transactional
+    @SuppressWarnings("unchecked")
     public RotationResult consume(final UUID jti) {
-        final var stored = refreshTokenRepository.findByJti(jti);
-        if (stored.isEmpty()) {
-            return new RotationResult(RotationStatus.NOT_FOUND, null);
-        }
-
-        final var token = stored.get();
-        if (token.getRevokedAt() != null) {
-            revokeFamily(token.getFamilyId());
-            return new RotationResult(RotationStatus.REUSED, token.getFamilyId());
-        }
-
-        token.setRevokedAt(LocalDateTime.now());
-        refreshTokenRepository.save(token);
-        return new RotationResult(RotationStatus.OK, token.getFamilyId());
-    }
-
-    private void revokeFamily(final UUID familyId) {
-        final var now = LocalDateTime.now();
-        final var tokens = refreshTokenRepository.findByFamilyIdAndRevokedAtIsNull(familyId);
-        tokens.forEach(t -> t.setRevokedAt(now));
-        refreshTokenRepository.saveAll(tokens);
+        final var result = redisTemplate.execute(consumeRefreshTokenScript, List.of(REFRESH_KEY_PREFIX + jti));
+        final var status = result.get(0).toString();
+        return switch (status) {
+            case "not_found" -> new RotationResult(RotationStatus.NOT_FOUND, null);
+            case "reused" -> new RotationResult(RotationStatus.REUSED, UUID.fromString(result.get(1).toString()));
+            case "ok" -> new RotationResult(RotationStatus.OK, UUID.fromString(result.get(1).toString()));
+            default -> throw new IllegalStateException("Unexpected consume_refresh_token.lua result: " + status);
+        };
     }
 }
