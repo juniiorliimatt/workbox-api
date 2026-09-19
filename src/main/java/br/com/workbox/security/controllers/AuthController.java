@@ -80,6 +80,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    /** Login por email+senha; se a conta tem MFA habilitado, devolve {@code mfa_required} em vez do par de tokens. */
     public ResponseEntity<?> login(@RequestBody final UserApiLoginCredentialsDTO dto, final HttpServletRequest request) {
         final var ip = clientIp(request);
         if (!loginRateLimiter.isAllowed("login:" + ip)) {
@@ -126,6 +127,7 @@ public class AuthController {
     }
 
     @PostMapping("/mfa/enroll")
+    /** Gera segredo TOTP novo pro usuário autenticado — não habilita MFA ainda (ver {@link #verifyMfa}). */
     public ResponseEntity<?> enrollMfa(final Authentication authentication) {
         final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
         return ResponseEntity.ok(mfaService.enroll(user));
@@ -140,6 +142,7 @@ public class AuthController {
     }
 
     @PostMapping("/mfa/disable")
+    /** Desabilita MFA do usuário autenticado — exige um código TOTP válido. */
     public ResponseEntity<Void> disableMfa(final Authentication authentication, @RequestBody @Valid final MfaCodeDTO dto) {
         final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
         mfaService.disable(user, dto.code());
@@ -174,12 +177,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    /** Encerra a sessão do usuário autenticado — bump de tokenVersion revoga todo token emitido antes. */
     public ResponseEntity<Void> logout(final Authentication authentication) {
         userApiService.logout(authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
+    /** Dados do próprio usuário autenticado. */
     public ResponseEntity<UserApiDTO> me(final Authentication authentication) {
         return ResponseEntity.ok(userApiService.me(authentication.getName()));
     }
@@ -197,6 +202,7 @@ public class AuthController {
     }
 
     @PutMapping("/password")
+    /** Troca de senha do usuário autenticado — exige a senha atual, ver {@link UserApiService#changePassword}. */
     public ResponseEntity<Void> changePassword(final Authentication authentication, @RequestBody @Valid final ChangePasswordDTO dto) {
         userApiService.changePassword(authentication.getName(), dto);
         return ResponseEntity.noContent().build();
@@ -211,6 +217,7 @@ public class AuthController {
     }
 
     @DeleteMapping("/avatar")
+    /** Remove o próprio avatar do usuário autenticado. */
     public ResponseEntity<Void> deleteAvatar(final Authentication authentication) {
         final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
         avatarService.delete(user.getId());
@@ -218,6 +225,7 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
+    /** Dispara o e-mail de redefinição — sempre 204, nunca revela se o e-mail existe (ver {@link PasswordResetService#requestReset}). */
     public ResponseEntity<?> forgotPassword(@RequestBody @Valid final ForgotPasswordDTO dto) {
         // Chave por e-mail (não IP): um atacante rotacionando IP não ganha tentativas
         // extras contra o mesmo endereço.
@@ -231,6 +239,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
+    /** Consome o token recebido por e-mail e define a nova senha, ver {@link PasswordResetService#resetPassword}. */
     public ResponseEntity<Void> resetPassword(@RequestBody @Valid final ResetPasswordDTO dto) {
         passwordResetService.resetPassword(dto.token(), dto.newPassword());
         return ResponseEntity.noContent().build();

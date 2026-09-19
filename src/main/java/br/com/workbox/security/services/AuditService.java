@@ -66,6 +66,7 @@ public class AuditService {
                 .map(audit -> new LoginAuditDTO(audit.getId(), audit.getEmail(), audit.isSuccessful(), audit.getReason(), audit.getIpAddress(), audit.getCreatedAt()));
     }
 
+    /** Histórico completo de revisões (Hibernate Envers) de um usuário, em ordem cronológica. */
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
     public List<UserApiRevisionDTO> findUserHistory(final java.util.UUID userId) {
@@ -95,6 +96,7 @@ public class AuditService {
                 .toList();
     }
 
+    /** Histórico completo de revisões (Hibernate Envers) de uma role, em ordem cronológica. */
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
     public List<RoleRevisionDTO> findRoleHistory(final Long roleId) {

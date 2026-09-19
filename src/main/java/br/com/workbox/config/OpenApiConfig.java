@@ -21,6 +21,7 @@ public class OpenApiConfig {
 
     private static final String BEARER_SCHEME_NAME = "bearer-jwt";
 
+    /** Metadados do Swagger UI/contrato OpenAPI — título, descrição e o esquema de autenticação Bearer JWT. */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()

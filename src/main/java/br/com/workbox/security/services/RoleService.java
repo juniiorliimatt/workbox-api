@@ -27,22 +27,26 @@ public class RoleService {
         this.messages = messages;
     }
 
+    /** Lista todas as roles ativas (exclusão lógica já filtrada pela entidade). */
     @Transactional(readOnly = true)
     public List<RoleDTO> findAll() {
         return roleRepository.findAll().stream().map(this::toDto).toList();
     }
 
+    /** Busca por id; lança {@link ResourceNotFoundException} (404) se não existir. */
     @Transactional(readOnly = true)
     public RoleDTO findById(final Long id) {
         return toDto(roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada"))));
     }
 
+    /** Cria uma role nova a partir do {@code authority} informado. */
     @Transactional
     public RoleDTO create(final RoleDTO dto) {
         final var saved = roleRepository.save(Role.builder().authority(dto.authority()).build());
         return toDto(saved);
     }
 
+    /** Atualiza o {@code authority} de uma role existente. */
     @Transactional
     public RoleDTO update(final Long id, final RoleDTO dto) {
         final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));

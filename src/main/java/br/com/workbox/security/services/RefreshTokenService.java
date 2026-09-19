@@ -42,6 +42,7 @@ public class RefreshTokenService {
         this.consumeRefreshTokenScript = consumeRefreshTokenScript;
     }
 
+    /** Persiste um refresh token novo no Redis (TTL = tempo até {@code expiresAt}) e indexa na família de rotação. */
     public void issue(final UUID userId, final UUID familyId, final UUID jti, final LocalDateTime expiresAt) {
         final var ttl = Duration.between(LocalDateTime.now(), expiresAt);
         final var refreshKey = REFRESH_KEY_PREFIX + jti;

@@ -37,6 +37,7 @@ public class AuditController {
         this.auditService = auditService;
     }
 
+    /** Tentativas de login (paginado), filtros opcionais {@code email}/{@code from}/{@code to} (ISO-8601). */
     @GetMapping("/logins")
     public ResponseEntity<Page<LoginAuditDTO>> findLoginAudits(
             @RequestParam(required = false) final String email,
@@ -46,11 +47,13 @@ public class AuditController {
         return ResponseEntity.ok(auditService.findLoginAudits(email, from, to, pageable));
     }
 
+    /** Histórico de revisões (Hibernate Envers) de um usuário. */
     @GetMapping("/users/{id}/history")
     public ResponseEntity<List<UserApiRevisionDTO>> findUserHistory(@PathVariable final UUID id) {
         return ResponseEntity.ok(auditService.findUserHistory(id));
     }
 
+    /** Histórico de revisões (Hibernate Envers) de uma role. */
     @GetMapping("/roles/{id}/history")
     public ResponseEntity<List<RoleRevisionDTO>> findRoleHistory(@PathVariable final Long id) {
         return ResponseEntity.ok(auditService.findRoleHistory(id));

@@ -41,6 +41,7 @@ public class MfaService {
         this.messages = messages;
     }
 
+    /** Gera segredo TOTP novo e devolve a otpauth URI — MFA só é habilitado depois que {@link #verifyAndEnable} confirmar o primeiro código. */
     @Transactional
     public MfaEnrollResponseDTO enroll(final UserApi user) {
         final var secret = secretGenerator.generate();
@@ -57,6 +58,7 @@ public class MfaService {
         return new MfaEnrollResponseDTO(secret, otpAuthUri);
     }
 
+    /** Confirma o primeiro código TOTP e só então habilita MFA na conta. */
     @Transactional
     public void verifyAndEnable(final UserApi user, final String code) {
         if (user.getMfaSecret() == null || !codeVerifier.isValidCode(user.getMfaSecret(), code)) {
@@ -66,6 +68,7 @@ public class MfaService {
         userApiRepository.save(user);
     }
 
+    /** Desabilita MFA e apaga o segredo — exige um código TOTP válido, não só estar autenticado. */
     @Transactional
     public void disable(final UserApi user, final String code) {
         if (!Boolean.TRUE.equals(user.getMfaEnabled()) || !codeVerifier.isValidCode(user.getMfaSecret(), code)) {
@@ -76,6 +79,7 @@ public class MfaService {
         userApiRepository.save(user);
     }
 
+    /** Só valida o código TOTP, sem alterar estado — usado no 2º fator do login (não confunda com {@link #verifyAndEnable}). */
     public boolean verifyCode(final UserApi user, final String code) {
         return user.getMfaSecret() != null && codeVerifier.isValidCode(user.getMfaSecret(), code);
     }

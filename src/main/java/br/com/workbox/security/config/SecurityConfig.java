@@ -103,6 +103,7 @@ public class SecurityConfig {
         return httpSecurity.build();
     }
 
+    /** Filter chain principal — todo o resto da API (autenticação JWT via {@link JwtService}, JWT via login social opcional). */
     @Bean
     @Order(2)
     public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
@@ -183,6 +184,7 @@ public class SecurityConfig {
         }
     }
 
+    /** Origem específica ecoada (nunca {@code *}) — necessário pra {@code withCredentials: true} no client. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         final CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();

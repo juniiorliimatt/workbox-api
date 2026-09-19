@@ -41,6 +41,7 @@ public class LoginAudit {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    /** Factory pra uma linha de auditoria — {@code createdAt} sempre {@code now()} no momento da tentativa. */
     public static LoginAudit of(final String email, final boolean successful, final String reason, final String ipAddress) {
         return LoginAudit.builder()
                 .id(UUID.randomUUID())

@@ -59,6 +59,7 @@ public class UserApiController {
         return ResponseEntity.ok(userApiService.findAll(search, pageable));
     }
 
+    /** Lista completa (HATEOAS), sem paginação — cada item ganha o próprio self-link. */
     @GetMapping("/find-all")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
@@ -74,6 +75,7 @@ public class UserApiController {
         return ResponseEntity.ok().body(result);
     }
 
+    /** Detalhe de um usuário (HATEOAS), com link pra si mesmo e pra listagem completa. */
     @GetMapping("/{id}")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
@@ -85,6 +87,7 @@ public class UserApiController {
         return ResponseEntity.ok().body(resource);
     }
 
+    /** Bytes do avatar de qualquer usuário (não só o próprio) — ADMIN/USER, ver regra de autorização em {@code API_USER}. */
     @GetMapping("/{id}/avatar")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<byte[]> getAvatar(@PathVariable final UUID id) {
@@ -92,6 +95,7 @@ public class UserApiController {
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(content.contentType())).body(content.bytes());
     }
 
+    /** Criação de usuário pelo admin (ADMIN-only) — auto-cadastro público é {@code POST /api/v1/auth/register}. */
     @PostMapping("/save")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.CREATED)
@@ -101,6 +105,7 @@ public class UserApiController {
         return ResponseEntity.created(uri).body(newUser);
     }
 
+    /** Atualização pelo admin (ADMIN-only) — roles omitidas no payload preservam as atuais, ver {@link UserApiService#update}. */
     @PutMapping("/update")
     @UserApiFindAll
     @ResponseStatus(HttpStatus.OK)
@@ -109,6 +114,7 @@ public class UserApiController {
         return ResponseEntity.ok().body(updatedUser);
     }
 
+    /** Exclusão lógica pelo admin (ADMIN-only) — ver {@link UserApiService#delete}. */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Void> delete(@PathVariable final UUID id) {

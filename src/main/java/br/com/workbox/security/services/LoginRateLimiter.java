@@ -43,6 +43,7 @@ public class LoginRateLimiter {
         this.window = Duration.ofSeconds(windowSeconds);
     }
 
+    /** {@code true} se a chave ainda não estourou o limite na janela atual (e já registra a tentativa); {@code false} se estourou. */
     public boolean isAllowed(final String key) {
         final var now = Instant.now();
         final var windowStart = now.minus(window);

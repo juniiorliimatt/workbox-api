@@ -90,6 +90,7 @@ public class UserApiService implements UserDetailsService {
         return list.map(this::toDto);
     }
 
+    /** Lista completa, sem paginação — usada pelo endpoint HATEOAS {@code /find-all}. */
     @Transactional(readOnly = true)
     public List<UserApiDTO> findAll() {
         logger.info("find all users");
@@ -97,6 +98,7 @@ public class UserApiService implements UserDetailsService {
         return list.stream().map(this::toDto).toList();
     }
 
+    /** Busca por id; lança {@link ResourceNotFoundException} (404) se não existir. */
     @Transactional(readOnly = true)
     public UserApiDTO findById(final UUID id) {
         logger.info("find by id");
@@ -104,12 +106,14 @@ public class UserApiService implements UserDetailsService {
         return toDto(user);
     }
 
+    /** Perfil do usuário autenticado — {@code email} vem do {@code Authentication} da requisição, nunca de um id no payload. */
     @Transactional(readOnly = true)
     public UserApiDTO me(final String email) {
         final var user = (UserApi) loadUserByUsername(email);
         return toDto(user);
     }
 
+    /** Criação de usuário pelo admin — diferente de {@link #register}, aceita roles do payload (ver {@link #resolveRoles}). */
     @Transactional
     public UserApiDTO save(final UserApiInsertOrUpdateDTO dto) {
         logger.info("save user");
@@ -240,6 +244,7 @@ public class UserApiService implements UserDetailsService {
         userApiRepository.save(user);
     }
 
+    /** Troca de senha autenticada: exige a senha atual e revoga (bump de tokenVersion) todo token emitido antes. */
     @Transactional
     public void changePassword(final String email, final ChangePasswordDTO dto) {
         final var user = (UserApi) loadUserByUsername(email);

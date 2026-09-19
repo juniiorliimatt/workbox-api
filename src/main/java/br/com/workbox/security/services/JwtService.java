@@ -86,6 +86,7 @@ public class JwtService extends OncePerRequestFilter {
                 .compact();
     }
 
+    /** Emite o access token (15min), com roles prefixadas {@code ROLE_} e a claim {@code tv} pra checagem de revogação. */
     public String generateToken(final UserApi user) {
         final var claims = new HashMap<String, Object>();
         claims.put(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE);
@@ -113,6 +114,7 @@ public class JwtService extends OncePerRequestFilter {
         return createToken(claims, user.getUsername(), MFA_TOKEN_VALIDITY_MS);
     }
 
+    /** Valida o {@code mfa_token} do 1º passo do login (tipo, assinatura, expiração, tokenVersion) e devolve o usuário associado. */
     public UserApi validateMfaChallengeToken(final String mfaToken) {
         final io.jsonwebtoken.Claims claims;
         try {

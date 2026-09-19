@@ -28,11 +28,13 @@ public class ApiConfig implements WebMvcConfigurer {
     @Value("${jwt.secret}")
     private String secret;
 
+    /** Chave HS256 usada por {@code JwtService} pra assinar/validar os JWTs — deriva de {@code jwt.secret}. */
     @Bean
     public SecretKey secretKey() {
         return new SecretKeySpec(secret.getBytes(), SignatureAlgorithm.HS256.getJcaName());
     }
 
+    /** BCrypt com custo 12 — usado pra hash de senha de usuário e de client_secret dos resource servers. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

@@ -172,6 +172,7 @@ public class UserApi implements UserDetails {
         return email;
     }
 
+    /** Aplica os defaults de flags de conta/segurança antes do primeiro insert — cobre criação via builder sem setar cada campo explicitamente. */
     @PrePersist
     public void prePersist() {
         this.isAccountNonExpired = Objects.isNull(isAccountNonExpired) ? Boolean.TRUE : this.isAccountNonExpired;

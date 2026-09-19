@@ -31,6 +31,7 @@ public class MailService {
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
+    /** Envia o link de redefinição (token bruto, nunca o hash) — falha de envio nunca propaga, ver {@link #send}. */
     public void sendPasswordResetEmail(final String to, final String rawToken) {
         final var link = frontendBaseUrl + "/reset-password?token=" + rawToken;
         final var message = new SimpleMailMessage();

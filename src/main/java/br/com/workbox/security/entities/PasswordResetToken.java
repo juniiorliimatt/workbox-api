@@ -49,6 +49,7 @@ public class PasswordResetToken {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    /** {@code true} se já passou de {@code expiresAt} — independente de {@code used}. */
     public boolean isExpired() {
         return expiresAt.isBefore(LocalDateTime.now());
     }

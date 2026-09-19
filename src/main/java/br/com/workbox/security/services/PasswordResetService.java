@@ -69,6 +69,7 @@ public class PasswordResetService {
         });
     }
 
+    /** Consome o token de reset (uso único) e define a nova senha, revogando as sessões antigas. */
     @Transactional
     public void resetPassword(final String rawToken, final String newPassword) {
         final var token = tokenRepository.findByTokenHash(hash(rawToken))
