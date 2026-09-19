@@ -61,7 +61,7 @@ public class AvatarService {
 
     /** Valida, reencoda como PNG e substitui o avatar do usuário — ver Javadoc da classe pro porquê do reencode. */
     @Transactional
-    public void store(final UUID userId, final MultipartFile file) {
+    public void armazenar(final UUID userId, final MultipartFile file) {
         if (file.isEmpty()) {
             throw new InvalidImageException(messages.getMessage("avatar.arquivoVazio"));
         }
@@ -97,7 +97,7 @@ public class AvatarService {
 
     /** Remove o avatar do usuário (arquivo em disco + referência na entidade). */
     @Transactional
-    public void delete(final UUID userId) {
+    public void excluir(final UUID userId) {
         final var user = userApiRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         deleteStoredFile(user.getAvatarFilename());
@@ -106,7 +106,7 @@ public class AvatarService {
     }
 
     /** Bytes do avatar salvo em disco (sempre PNG); lança {@link ResourceNotFoundException} se o usuário não tiver um. */
-    public AvatarContent load(final UUID userId) {
+    public AvatarContent carregar(final UUID userId) {
         final var user = userApiRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         if (user.getAvatarFilename() == null) {

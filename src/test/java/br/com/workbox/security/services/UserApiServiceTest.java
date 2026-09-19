@@ -118,7 +118,7 @@ class UserApiServiceTest {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches(RAW_PASSWORD, HASH)).thenReturn(true);
 
-            final var result = service.attemptLogin(EMAIL, RAW_PASSWORD);
+            final var result = service.tentarLogin(EMAIL, RAW_PASSWORD);
 
             assertThat(result.success()).isTrue();
             assertThat(result.user()).isSameAs(user);
@@ -132,7 +132,7 @@ class UserApiServiceTest {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("senha-errada", HASH)).thenReturn(false);
 
-            final var result = service.attemptLogin(EMAIL, "senha-errada");
+            final var result = service.tentarLogin(EMAIL, "senha-errada");
 
             assertThat(result.success()).isFalse();
             assertThat(result.failureReason()).isEqualTo("invalid_password");
@@ -146,7 +146,7 @@ class UserApiServiceTest {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("senha-errada", HASH)).thenReturn(false);
 
-            service.attemptLogin(EMAIL, "senha-errada");
+            service.tentarLogin(EMAIL, "senha-errada");
 
             assertThat(user.getFailedLoginAttempts()).isZero();
             assertThat(user.getLockedUntil()).isAfter(LocalDateTime.now().plusMinutes(UserApiService.LOCK_DURATION_MINUTES - 1));
@@ -158,7 +158,7 @@ class UserApiServiceTest {
         void failsForUnknownUserWithoutThrowing() {
             when(userApiRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
 
-            final var result = service.attemptLogin("ghost@example.com", "qualquer");
+            final var result = service.tentarLogin("ghost@example.com", "qualquer");
 
             assertThat(result.success()).isFalse();
             assertThat(result.failureReason()).isEqualTo("unknown_user");
@@ -170,7 +170,7 @@ class UserApiServiceTest {
             final var user = aUser().isEnabled(false).build();
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            final var result = service.attemptLogin(EMAIL, RAW_PASSWORD);
+            final var result = service.tentarLogin(EMAIL, RAW_PASSWORD);
 
             assertThat(result.success()).isFalse();
             assertThat(result.failureReason()).isEqualTo("account_not_usable");
@@ -183,7 +183,7 @@ class UserApiServiceTest {
             final var user = aUser().isAccountNonLocked(false).build();
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            assertThat(service.attemptLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
+            assertThat(service.tentarLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
         }
 
         @Test
@@ -192,7 +192,7 @@ class UserApiServiceTest {
             final var user = aUser().lockedUntil(LocalDateTime.now().plusMinutes(5)).build();
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            assertThat(service.attemptLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
+            assertThat(service.tentarLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
         }
 
         @Test
@@ -201,7 +201,7 @@ class UserApiServiceTest {
             final var user = aUser().isAccountNonExpired(false).build();
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            assertThat(service.attemptLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
+            assertThat(service.tentarLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
         }
 
         @Test
@@ -210,7 +210,7 @@ class UserApiServiceTest {
             final var user = aUser().isCredentialsNonExpired(false).build();
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-            assertThat(service.attemptLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
+            assertThat(service.tentarLogin(EMAIL, RAW_PASSWORD).success()).isFalse();
         }
     }
 
@@ -237,7 +237,7 @@ class UserApiServiceTest {
             when(passwordEncoder.matches(RAW_PASSWORD, HASH)).thenReturn(true);
             when(passwordEncoder.encode("nova-senha-forte")).thenReturn("novo-hash");
 
-            service.changePassword(EMAIL, new ChangePasswordDTO(RAW_PASSWORD, "nova-senha-forte"));
+            service.alterarSenha(EMAIL, new ChangePasswordDTO(RAW_PASSWORD, "nova-senha-forte"));
 
             assertThat(user.getPassword()).isEqualTo("novo-hash");
             assertThat(user.getTokenVersion()).isEqualTo(1L);
@@ -250,7 +250,7 @@ class UserApiServiceTest {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("errada", HASH)).thenReturn(false);
 
-            assertThatThrownBy(() -> service.changePassword(EMAIL, new ChangePasswordDTO("errada", "nova-senha-forte")))
+            assertThatThrownBy(() -> service.alterarSenha(EMAIL, new ChangePasswordDTO("errada", "nova-senha-forte")))
                     .isInstanceOf(br.com.workbox.exceptions.LoginInvalidException.class);
             verify(userApiRepository, never()).save(any());
         }
@@ -334,7 +334,7 @@ class UserApiServiceTest {
             when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(HASH);
             when(userApiRepository.save(any(UserApi.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            final var result = service.register(dto);
+            final var result = service.cadastrar(dto);
 
             assertThat(result.getSocialName()).isEqualTo(NAME);
             assertThat(result.isEnabled()).isTrue();
@@ -349,7 +349,7 @@ class UserApiServiceTest {
         void registerThrowsWhenEmailTaken() {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(aUser().build()));
 
-            assertThatThrownBy(() -> service.register(dto))
+            assertThatThrownBy(() -> service.cadastrar(dto))
                     .isInstanceOf(UserAlreadyExistsException.class)
                     .hasMessage("E-mail já cadastrado");
             verify(userApiRepository, never()).save(any());
@@ -361,7 +361,7 @@ class UserApiServiceTest {
             when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
             when(roleRepository.findByAuthority("USER")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.register(dto))
+            assertThatThrownBy(() -> service.cadastrar(dto))
                     .isInstanceOf(ResourceNotFoundException.class);
             verify(userApiRepository, never()).save(any());
         }

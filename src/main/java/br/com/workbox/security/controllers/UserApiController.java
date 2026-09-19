@@ -91,7 +91,7 @@ public class UserApiController {
     @GetMapping("/{id}/avatar")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<byte[]> getAvatar(@PathVariable final UUID id) {
-        final var content = avatarService.load(id);
+        final var content = avatarService.carregar(id);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(content.contentType())).body(content.bytes());
     }
 

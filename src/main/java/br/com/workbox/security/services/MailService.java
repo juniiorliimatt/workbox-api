@@ -32,7 +32,7 @@ public class MailService {
     }
 
     /** Envia o link de redefinição (token bruto, nunca o hash) — falha de envio nunca propaga, ver {@link #send}. */
-    public void sendPasswordResetEmail(final String to, final String rawToken) {
+    public void enviarEmailResetSenha(final String to, final String rawToken) {
         final var link = frontendBaseUrl + "/reset-password?token=" + rawToken;
         final var message = new SimpleMailMessage();
         message.setTo(to);
@@ -44,7 +44,7 @@ public class MailService {
     }
 
     /** Disparado só depois que a senha já foi trocada com sucesso — nunca antes. */
-    public void sendPasswordResetConfirmationEmail(final String to) {
+    public void enviarEmailConfirmacaoResetSenha(final String to) {
         final var message = new SimpleMailMessage();
         message.setTo(to);
         message.setFrom(fromAddress);

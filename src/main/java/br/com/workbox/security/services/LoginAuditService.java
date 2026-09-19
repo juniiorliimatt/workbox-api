@@ -25,10 +25,10 @@ public class LoginAuditService {
      * Grava uma tentativa de login (sucesso ou falha) pra auditoria.
      *
      * <p>REQUIRES_NEW: auditoria é best-effort, nunca deve fazer o login falhar nem ficar
-     * presa na mesma transação de um attemptLogin que der rollback por outro motivo.
+     * presa na mesma transação de um tentarLogin que der rollback por outro motivo.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void record(final String email, final boolean successful, final String reason, final String ipAddress) {
+    public void registrar(final String email, final boolean successful, final String reason, final String ipAddress) {
         loginAuditRepository.save(LoginAudit.of(email, successful, reason, ipAddress));
     }
 }

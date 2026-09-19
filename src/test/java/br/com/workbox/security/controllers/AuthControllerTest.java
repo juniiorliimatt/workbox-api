@@ -84,7 +84,7 @@ class AuthControllerTest {
         void createsUser() {
             final var dto = new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!");
             final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null, java.util.Set.of());
-            when(userApiService.register(dto)).thenReturn(created);
+            when(userApiService.cadastrar(dto)).thenReturn(created);
 
             final var response = controller.register(dto, new MockHttpServletRequest());
 
@@ -111,7 +111,7 @@ class AuthControllerTest {
         @DisplayName("conta com MFA habilitado responde mfa_required em vez dos tokens")
         void mfaRequired() {
             final var user = user(true);
-            when(userApiService.attemptLogin("alice@example.com", "x")).thenReturn(br.com.workbox.security.services.LoginAttemptResult.success(user));
+            when(userApiService.tentarLogin("alice@example.com", "x")).thenReturn(br.com.workbox.security.services.LoginAttemptResult.success(user));
             when(jwtService.issueMfaChallengeToken(user)).thenReturn("mfa-token");
 
             final var response = controller.login(new UserApiLoginCredentialsDTO("alice@example.com", "x"), new MockHttpServletRequest());
@@ -148,7 +148,7 @@ class AuthControllerTest {
             final var response = controller.mfaLogin(new MfaLoginDTO("tok", "000000"), new MockHttpServletRequest());
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-            verify(loginAuditService).record(user.getUsername(), false, "mfa_invalid_code", "127.0.0.1");
+            verify(loginAuditService).registrar(user.getUsername(), false, "mfa_invalid_code", "127.0.0.1");
         }
 
         @Test
@@ -164,7 +164,7 @@ class AuthControllerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isEqualTo(Map.of("access_token", "access", "refresh_token", "refresh"));
-            verify(loginAuditService).record(user.getUsername(), true, "mfa_verified", "127.0.0.1");
+            verify(loginAuditService).registrar(user.getUsername(), true, "mfa_verified", "127.0.0.1");
         }
     }
 
@@ -214,7 +214,7 @@ class AuthControllerTest {
             final var response = controller.uploadAvatar(authentication, file);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(avatarService).store(user.getId(), file);
+            verify(avatarService).armazenar(user.getId(), file);
         }
 
         @Test
@@ -228,7 +228,7 @@ class AuthControllerTest {
             final var response = controller.deleteAvatar(authentication);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(avatarService).delete(user.getId());
+            verify(avatarService).excluir(user.getId());
         }
     }
 

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * janela dentro do mesmo mapa via prefixo de chave ({@code "login:"+ip},
  * {@code "refresh:"+ip}, {@code "forgot-password:"+email}) — mesmo limite/janela pra
  * todos, mas contadores independentes. Complementa o lockout por conta em
- * {@link UserApiService#attemptLogin}: esse aqui pega o atacante testando várias contas
+ * {@link UserApiService#tentarLogin}: esse aqui pega o atacante testando várias contas
  * do mesmo IP.
  *
  * Limite configurável (não só um {@code final int}) porque os cenários de Cucumber

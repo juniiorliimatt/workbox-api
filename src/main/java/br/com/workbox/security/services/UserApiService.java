@@ -113,7 +113,7 @@ public class UserApiService implements UserDetailsService {
         return toDto(user);
     }
 
-    /** Criação de usuário pelo admin — diferente de {@link #register}, aceita roles do payload (ver {@link #resolveRoles}). */
+    /** Criação de usuário pelo admin — diferente de {@link #cadastrar}, aceita roles do payload (ver {@link #resolveRoles}). */
     @Transactional
     public UserApiDTO save(final UserApiInsertOrUpdateDTO dto) {
         logger.info("save user");
@@ -146,7 +146,7 @@ public class UserApiService implements UserDetailsService {
      * segurança contra corrida entre o check e o insert.
      */
     @Transactional
-    public UserApiDTO register(final UserApiRegisterDTO dto) {
+    public UserApiDTO cadastrar(final UserApiRegisterDTO dto) {
         if (userApiRepository.findByEmail(dto.email()).isPresent()) {
             throw new UserAlreadyExistsException(messages.getMessage("usuario.emailJaCadastrado"));
         }
@@ -202,7 +202,7 @@ public class UserApiService implements UserDetailsService {
      * (o motivo detalhado é só pra log/auditoria, nunca pra resposta HTTP).
      */
     @Transactional
-    public LoginAttemptResult attemptLogin(final String email, final String rawPassword) {
+    public LoginAttemptResult tentarLogin(final String email, final String rawPassword) {
         final UserApi user;
         try {
             user = (UserApi) loadUserByUsername(email);
@@ -246,7 +246,7 @@ public class UserApiService implements UserDetailsService {
 
     /** Troca de senha autenticada: exige a senha atual e revoga (bump de tokenVersion) todo token emitido antes. */
     @Transactional
-    public void changePassword(final String email, final ChangePasswordDTO dto) {
+    public void alterarSenha(final String email, final ChangePasswordDTO dto) {
         final var user = (UserApi) loadUserByUsername(email);
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             throw new LoginInvalidException(messages.getMessage("usuario.senhaAtualIncorreta"));

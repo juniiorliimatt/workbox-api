@@ -68,14 +68,14 @@ public class AuthController {
         this.messages = messages;
     }
 
-    /** Auto-cadastro público — sempre USER, nunca aceita roles do payload (ver {@link UserApiService#register}). */
+    /** Auto-cadastro público — sempre USER, nunca aceita roles do payload (ver {@link UserApiService#cadastrar}). */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid final UserApiRegisterDTO dto, final HttpServletRequest request) {
         if (!loginRateLimiter.isAllowed("register:" + clientIp(request))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitCadastro")));
         }
-        final var created = userApiService.register(dto);
+        final var created = userApiService.cadastrar(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -88,8 +88,8 @@ public class AuthController {
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitLogin")));
         }
 
-        final var result = userApiService.attemptLogin(dto.email(), dto.password());
-        loginAuditService.record(dto.email(), result.success(), result.failureReason(), ip);
+        final var result = userApiService.tentarLogin(dto.email(), dto.password());
+        loginAuditService.registrar(dto.email(), result.success(), result.failureReason(), ip);
 
         if (!result.success()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -118,11 +118,11 @@ public class AuthController {
 
         final var user = jwtService.validateMfaChallengeToken(dto.mfaToken());
         if (!mfaService.verifyCode(user, dto.code())) {
-            loginAuditService.record(user.getUsername(), false, "mfa_invalid_code", ip);
+            loginAuditService.registrar(user.getUsername(), false, "mfa_invalid_code", ip);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, messages.getMessage("mfa.codigoInvalido")));
         }
-        loginAuditService.record(user.getUsername(), true, "mfa_verified", ip);
+        loginAuditService.registrar(user.getUsername(), true, "mfa_verified", ip);
         return ResponseEntity.ok(issueTokenPair(user));
     }
 
@@ -202,17 +202,17 @@ public class AuthController {
     }
 
     @PutMapping("/password")
-    /** Troca de senha do usuário autenticado — exige a senha atual, ver {@link UserApiService#changePassword}. */
+    /** Troca de senha do usuário autenticado — exige a senha atual, ver {@link UserApiService#alterarSenha}. */
     public ResponseEntity<Void> changePassword(final Authentication authentication, @RequestBody @Valid final ChangePasswordDTO dto) {
-        userApiService.changePassword(authentication.getName(), dto);
+        userApiService.alterarSenha(authentication.getName(), dto);
         return ResponseEntity.noContent().build();
     }
 
-    /** Upload/troca do próprio avatar — reencodado e validado em {@link AvatarService#store}. */
+    /** Upload/troca do próprio avatar — reencodado e validado em {@link AvatarService#armazenar}. */
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> uploadAvatar(final Authentication authentication, @RequestParam("file") final MultipartFile file) {
         final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
-        avatarService.store(user.getId(), file);
+        avatarService.armazenar(user.getId(), file);
         return ResponseEntity.noContent().build();
     }
 
@@ -220,12 +220,12 @@ public class AuthController {
     /** Remove o próprio avatar do usuário autenticado. */
     public ResponseEntity<Void> deleteAvatar(final Authentication authentication) {
         final var user = (UserApi) userApiService.loadUserByUsername(authentication.getName());
-        avatarService.delete(user.getId());
+        avatarService.excluir(user.getId());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/forgot-password")
-    /** Dispara o e-mail de redefinição — sempre 204, nunca revela se o e-mail existe (ver {@link PasswordResetService#requestReset}). */
+    /** Dispara o e-mail de redefinição — sempre 204, nunca revela se o e-mail existe (ver {@link PasswordResetService#solicitarResetSenha}). */
     public ResponseEntity<?> forgotPassword(@RequestBody @Valid final ForgotPasswordDTO dto) {
         // Chave por e-mail (não IP): um atacante rotacionando IP não ganha tentativas
         // extras contra o mesmo endereço.
@@ -234,14 +234,14 @@ public class AuthController {
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitResetSenha")));
         }
         // Sempre 204, exista ou não o e-mail — não revelar quais e-mails têm conta.
-        passwordResetService.requestReset(dto.email());
+        passwordResetService.solicitarResetSenha(dto.email());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/reset-password")
-    /** Consome o token recebido por e-mail e define a nova senha, ver {@link PasswordResetService#resetPassword}. */
+    /** Consome o token recebido por e-mail e define a nova senha, ver {@link PasswordResetService#resetarSenha}. */
     public ResponseEntity<Void> resetPassword(@RequestBody @Valid final ResetPasswordDTO dto) {
-        passwordResetService.resetPassword(dto.token(), dto.newPassword());
+        passwordResetService.resetarSenha(dto.token(), dto.newPassword());
         return ResponseEntity.noContent().build();
     }
 

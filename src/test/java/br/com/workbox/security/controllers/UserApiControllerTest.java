@@ -120,7 +120,7 @@ class UserApiControllerTest {
     @DisplayName(value = "Get avatar — devolve os bytes com o content-type correto")
     void testGetAvatar() throws Exception {
         final var bytes = new byte[]{1, 2, 3};
-        when(avatarService.load(this.id)).thenReturn(new AvatarService.AvatarContent(bytes, "image/png"));
+        when(avatarService.carregar(this.id)).thenReturn(new AvatarService.AvatarContent(bytes, "image/png"));
 
         mockMvc.perform(get("/api/v1/user/" + this.id + "/avatar"))
                 .andExpect(status().isOk())

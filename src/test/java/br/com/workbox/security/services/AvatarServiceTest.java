@@ -73,7 +73,7 @@ class AvatarServiceTest {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
             final var file = new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes());
 
-            avatarService.store(userId, file);
+            avatarService.armazenar(userId, file);
 
             assertThat(user.getAvatarFilename()).isNotNull().endsWith(".png");
             assertThat(Files.exists(tempDir.resolve(user.getAvatarFilename()))).isTrue();
@@ -86,9 +86,9 @@ class AvatarServiceTest {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
             final var file = new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes());
 
-            avatarService.store(userId, file);
+            avatarService.armazenar(userId, file);
             final var firstFilename = user.getAvatarFilename();
-            avatarService.store(userId, file);
+            avatarService.armazenar(userId, file);
 
             assertThat(Files.exists(tempDir.resolve(firstFilename))).isFalse();
             assertThat(user.getAvatarFilename()).isNotEqualTo(firstFilename);
@@ -99,7 +99,7 @@ class AvatarServiceTest {
         void rejectsEmptyFile() {
             final var file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[0]);
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(InvalidImageException.class);
             verify(userApiRepository, never()).save(any());
         }
@@ -109,7 +109,7 @@ class AvatarServiceTest {
         void rejectsDisallowedContentType() throws IOException {
             final var file = new MockMultipartFile("file", "avatar.gif", "image/gif", validPngBytes());
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(InvalidImageException.class);
             verify(userApiRepository, never()).save(any());
         }
@@ -119,7 +119,7 @@ class AvatarServiceTest {
         void rejectsSpoofedContentType() {
             final var file = new MockMultipartFile("file", "malicious.png", "image/png", "não é uma imagem".getBytes());
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(InvalidImageException.class);
             verify(userApiRepository, never()).save(any());
         }
@@ -130,7 +130,7 @@ class AvatarServiceTest {
             when(userApiRepository.findById(userId)).thenReturn(Optional.empty());
             final var file = new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes());
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
@@ -142,7 +142,7 @@ class AvatarServiceTest {
             when(file.getContentType()).thenReturn("image/png");
             when(file.getInputStream()).thenThrow(new IOException("boom"));
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(InvalidImageException.class);
             verify(userApiRepository, never()).findById(any());
         }
@@ -154,7 +154,7 @@ class AvatarServiceTest {
             Files.delete(tempDir);
             final var file = new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes());
 
-            assertThatThrownBy(() -> avatarService.store(userId, file))
+            assertThatThrownBy(() -> avatarService.armazenar(userId, file))
                     .isInstanceOf(InvalidImageException.class);
             verify(userApiRepository, never()).save(any());
         }
@@ -168,10 +168,10 @@ class AvatarServiceTest {
         @DisplayName("remove o arquivo do disco e limpa avatarFilename")
         void deletesFileAndClearsFilename() throws IOException {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
-            avatarService.store(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
+            avatarService.armazenar(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
             final var filename = user.getAvatarFilename();
 
-            avatarService.delete(userId);
+            avatarService.excluir(userId);
 
             assertThat(user.getAvatarFilename()).isNull();
             assertThat(Files.exists(tempDir.resolve(filename))).isFalse();
@@ -182,7 +182,7 @@ class AvatarServiceTest {
         void noOpWhenNoAvatar() {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
 
-            avatarService.delete(userId);
+            avatarService.excluir(userId);
 
             assertThat(user.getAvatarFilename()).isNull();
         }
@@ -196,9 +196,9 @@ class AvatarServiceTest {
         @DisplayName("devolve os bytes gravados em disco com content-type image/png")
         void loadsStoredBytes() throws IOException {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
-            avatarService.store(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
+            avatarService.armazenar(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
 
-            final var content = avatarService.load(userId);
+            final var content = avatarService.carregar(userId);
 
             assertThat(content.contentType()).isEqualTo("image/png");
             assertThat(content.bytes()).isNotEmpty();
@@ -209,7 +209,7 @@ class AvatarServiceTest {
         void throwsWhenNoAvatar() {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
 
-            assertThatThrownBy(() -> avatarService.load(userId))
+            assertThatThrownBy(() -> avatarService.carregar(userId))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
@@ -218,7 +218,7 @@ class AvatarServiceTest {
         void throwsWhenUserMissing() {
             when(userApiRepository.findById(userId)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> avatarService.load(userId))
+            assertThatThrownBy(() -> avatarService.carregar(userId))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
@@ -226,10 +226,10 @@ class AvatarServiceTest {
         @DisplayName("lança ResourceNotFoundException quando o arquivo referenciado não existe mais em disco")
         void throwsWhenFileMissingFromDisk() throws IOException {
             when(userApiRepository.findById(userId)).thenReturn(Optional.of(user));
-            avatarService.store(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
+            avatarService.armazenar(userId, new MockMultipartFile("file", "avatar.png", "image/png", validPngBytes()));
             Files.delete(tempDir.resolve(user.getAvatarFilename()));
 
-            assertThatThrownBy(() -> avatarService.load(userId))
+            assertThatThrownBy(() -> avatarService.carregar(userId))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
     }

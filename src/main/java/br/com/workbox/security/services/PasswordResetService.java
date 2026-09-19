@@ -54,7 +54,7 @@ public class PasswordResetService {
      * responde da mesma forma pro chamador (ver AuthController).
      */
     @Transactional
-    public void requestReset(final String email) {
+    public void solicitarResetSenha(final String email) {
         userApiRepository.findByEmail(email).ifPresent(user -> {
             final var rawToken = generateRawToken();
             tokenRepository.save(PasswordResetToken.builder()
@@ -65,13 +65,13 @@ public class PasswordResetService {
                     .used(false)
                     .createdAt(LocalDateTime.now())
                     .build());
-            mailService.sendPasswordResetEmail(email, rawToken);
+            mailService.enviarEmailResetSenha(email, rawToken);
         });
     }
 
     /** Consome o token de reset (uso único) e define a nova senha, revogando as sessões antigas. */
     @Transactional
-    public void resetPassword(final String rawToken, final String newPassword) {
+    public void resetarSenha(final String rawToken, final String newPassword) {
         final var token = tokenRepository.findByTokenHash(hash(rawToken))
                 .orElseThrow(() -> new InvalidTokenException(messages.getMessage("resetSenha.tokenInvalidoOuExpirado")));
         if (token.isUsed() || token.isExpired()) {
@@ -86,7 +86,7 @@ public class PasswordResetService {
         token.setUsed(true);
         tokenRepository.save(token);
 
-        mailService.sendPasswordResetConfirmationEmail(user.getEmail());
+        mailService.enviarEmailConfirmacaoResetSenha(user.getEmail());
     }
 
     private String generateRawToken() {
