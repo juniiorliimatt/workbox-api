@@ -15,6 +15,7 @@ import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,17 +39,19 @@ public class AvatarService {
     private static final String STORED_FORMAT = "png";
     private static final String STORED_CONTENT_TYPE = "image/png";
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", STORED_CONTENT_TYPE, "image/webp");
-    private static final String USER_NOT_FOUND = "User not found";
 
     private static final Logger logger = LoggerFactory.getLogger(AvatarService.class);
 
     private final UserApiRepository userApiRepository;
     private final Path storageDir;
+    private final MessageSourceAccessor messages;
 
     public AvatarService(final UserApiRepository userApiRepository,
-                          @Value("${avatar.storage-path:uploads/avatars}") final String storagePath) {
+                          @Value("${avatar.storage-path:uploads/avatars}") final String storagePath,
+                          final MessageSourceAccessor messages) {
         this.userApiRepository = userApiRepository;
         this.storageDir = Path.of(storagePath);
+        this.messages = messages;
         try {
             Files.createDirectories(storageDir);
         } catch (IOException e) {
@@ -59,31 +62,31 @@ public class AvatarService {
     @Transactional
     public void store(final UUID userId, final MultipartFile file) {
         if (file.isEmpty()) {
-            throw new InvalidImageException("File is empty");
+            throw new InvalidImageException(messages.getMessage("avatar.arquivoVazio"));
         }
         final var contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new InvalidImageException("Unsupported image type — allowed: image/jpeg, image/png, image/webp");
+            throw new InvalidImageException(messages.getMessage("avatar.tipoNaoSuportado"));
         }
 
         final BufferedImage image;
         try {
             image = ImageIO.read(file.getInputStream());
         } catch (IOException e) {
-            throw new InvalidImageException("Could not read the uploaded file", e);
+            throw new InvalidImageException(messages.getMessage("avatar.falhaLeitura"), e);
         }
         if (image == null) {
-            throw new InvalidImageException("File is not a valid image");
+            throw new InvalidImageException(messages.getMessage("avatar.imagemInvalida"));
         }
 
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
 
         final var filename = UUID.randomUUID() + "." + STORED_FORMAT;
         try {
             ImageIO.write(image, STORED_FORMAT, storageDir.resolve(filename).toFile());
         } catch (IOException e) {
-            throw new InvalidImageException("Could not store the image", e);
+            throw new InvalidImageException(messages.getMessage("avatar.falhaArmazenamento"), e);
         }
 
         deleteStoredFile(user.getAvatarFilename());
@@ -94,7 +97,7 @@ public class AvatarService {
     @Transactional
     public void delete(final UUID userId) {
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         deleteStoredFile(user.getAvatarFilename());
         user.setAvatarFilename(null);
         userApiRepository.save(user);
@@ -102,15 +105,15 @@ public class AvatarService {
 
     public AvatarContent load(final UUID userId) {
         final var user = userApiRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+                .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         if (user.getAvatarFilename() == null) {
-            throw new ResourceNotFoundException("User has no avatar");
+            throw new ResourceNotFoundException(messages.getMessage("avatar.usuarioSemAvatar"));
         }
         try {
             final var bytes = Files.readAllBytes(storageDir.resolve(user.getAvatarFilename()));
             return new AvatarContent(bytes, STORED_CONTENT_TYPE);
         } catch (IOException _) {
-            throw new ResourceNotFoundException("Avatar file not found");
+            throw new ResourceNotFoundException(messages.getMessage("avatar.arquivoNaoEncontrado"));
         }
     }
 

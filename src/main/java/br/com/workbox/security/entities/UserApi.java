@@ -68,12 +68,12 @@ public class UserApi implements UserDetails {
     // identificador de login e não precisa ser único.
     @Size(min = 2, max = 120)
     @Column(nullable = false)
-    @NotBlank(message = "Social name is mandatory")
+    @NotBlank(message = "{validacao.nomeSocialObrigatorio}")
     private String socialName;
 
     @Column(nullable = false)
-    @NotBlank(message = "password is mandatory")
-    @NotBlank(message = "Required field")
+    @NotBlank(message = "{validacao.senhaObrigatoria}")
+    @NotBlank(message = "{validacao.campoObrigatorio}")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
@@ -81,8 +81,8 @@ public class UserApi implements UserDetails {
     // único parcial (WHERE deleted_at IS NULL, ver changelog v0.0.2), exclusão lógica
     // impediria reusar o email de um usuário deletado com UNIQUE bruto na coluna.
     @Column(nullable = false)
-    @NotBlank(message = "Email is mandatory")
-    @Email(message = "Email must be valid")
+    @NotBlank(message = "{validacao.emailObrigatorio}")
+    @Email(message = "{validacao.emailInvalido}")
     private String email;
 
     @NotAudited

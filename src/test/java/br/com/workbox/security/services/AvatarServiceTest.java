@@ -27,6 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,7 +47,11 @@ class AvatarServiceTest {
 
     @BeforeEach
     void setUp() {
-        avatarService = new AvatarService(userApiRepository, tempDir.toString());
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        avatarService = new AvatarService(userApiRepository, tempDir.toString(), messages);
         userId = UUID.randomUUID();
         user = UserApi.builder().id(userId).socialName("Alice").email("alice@example.com").password("hash").build();
     }

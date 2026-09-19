@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -61,12 +62,15 @@ public class JwtService extends OncePerRequestFilter {
     private final SecretKey secretKey;
     private final UserApiService userApiService;
     private final RefreshTokenService refreshTokenService;
+    private final MessageSourceAccessor messages;
 
     @Autowired
-    public JwtService(final SecretKey secretKey, final UserApiService userApiService, final RefreshTokenService refreshTokenService) {
+    public JwtService(final SecretKey secretKey, final UserApiService userApiService,
+                       final RefreshTokenService refreshTokenService, final MessageSourceAccessor messages) {
         this.secretKey = secretKey;
         this.userApiService = userApiService;
         this.refreshTokenService = refreshTokenService;
+        this.messages = messages;
     }
 
     private String createToken(Map<String, Object> claims, String subject, long validityInMilliseconds) {
@@ -114,19 +118,19 @@ public class JwtService extends OncePerRequestFilter {
         try {
             claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(mfaToken).getBody();
         } catch (Exception e) {
-            throw new InvalidTokenException("Invalid or expired MFA token", e);
+            throw new InvalidTokenException(messages.getMessage("mfa.tokenInvalidoOuExpirado"), e);
         }
         if (!MFA_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
-            throw new InvalidTokenException("Not an MFA challenge token");
+            throw new InvalidTokenException(messages.getMessage("mfa.tokenNaoEhDesafio"));
         }
         final UserApi user;
         try {
             user = (UserApi) userApiService.loadUserByUsername(claims.getSubject());
         } catch (UsernameNotFoundException e) {
-            throw new InvalidTokenException("Invalid or expired MFA token", e);
+            throw new InvalidTokenException(messages.getMessage("mfa.tokenInvalidoOuExpirado"), e);
         }
         if (!Objects.equals(tokenVersionOf(user), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
-            throw new InvalidTokenException("Invalid or expired MFA token");
+            throw new InvalidTokenException(messages.getMessage("mfa.tokenInvalidoOuExpirado"));
         }
         return user;
     }
@@ -146,30 +150,30 @@ public class JwtService extends OncePerRequestFilter {
     public TokenPair rotateRefreshToken(final String refreshToken) {
         final var claims = parseRefreshTokenClaims(refreshToken);
         if (claims.getExpiration().before(new Date())) {
-            throw new InvalidRefreshTokenException("Token expired");
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.expirado"));
         }
         if (!REFRESH_TOKEN_TYPE.equals(claims.get(TOKEN_TYPE_CLAIM))) {
-            throw new InvalidRefreshTokenException("Token is not a refresh token");
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.naoEhRefresh"));
         }
         final UserApi user;
         try {
             user = (UserApi) userApiService.loadUserByUsername(claims.getSubject());
         } catch (UsernameNotFoundException e) {
-            throw new InvalidRefreshTokenException("Invalid refresh token", e);
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.invalido"), e);
         }
         if (!Objects.equals(tokenVersionOf(user), claims.get(TOKEN_VERSION_CLAIM, Long.class))) {
-            throw new InvalidRefreshTokenException("Token has been revoked");
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.revogado"));
         }
 
         final var jti = UUID.fromString(claims.get(JTI_CLAIM, String.class));
         final var result = refreshTokenService.consume(jti);
 
         if (result.status() == RotationStatus.NOT_FOUND) {
-            throw new InvalidRefreshTokenException("Refresh token not recognized");
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.naoReconhecido"));
         }
         if (result.status() == RotationStatus.REUSED) {
             logger.warn("Refresh token reuse detected for user {} (family {}) — revoking whole family", user.getUsername(), result.familyId());
-            throw new InvalidRefreshTokenException("Refresh token reuse detected");
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.reusoDetectado"));
         }
 
         return new TokenPair(generateToken(user), issueRefreshToken(user, result.familyId()));
@@ -224,7 +228,7 @@ public class JwtService extends OncePerRequestFilter {
         } catch (InvalidRefreshTokenException e) {
             throw e;
         } catch (Exception e) {
-            throw new InvalidRefreshTokenException("Invalid refresh token", e);
+            throw new InvalidRefreshTokenException(messages.getMessage("refreshToken.invalido"), e);
         }
     }
 
@@ -239,7 +243,7 @@ public class JwtService extends OncePerRequestFilter {
                     .collect(Collectors.toList());
             return new UsernamePasswordAuthenticationToken(resolved.username(), null, authorities);
         } catch (JwtException | IllegalArgumentException e) {
-            throw new InvalidTokenException("Invalid token or expired");
+            throw new InvalidTokenException(messages.getMessage("token.invalidoOuExpirado"));
         }
     }
 

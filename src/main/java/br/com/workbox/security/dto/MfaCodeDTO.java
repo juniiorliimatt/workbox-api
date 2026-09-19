@@ -10,6 +10,6 @@ import jakarta.validation.constraints.Pattern;
  */
 
 public record MfaCodeDTO(
-        @NotBlank(message = "Code is mandatory")
-        @Pattern(regexp = "\\d{6}", message = "Code must be 6 digits") String code) {
+        @NotBlank(message = "{validacao.codigoObrigatorio}")
+        @Pattern(regexp = "\\d{6}", message = "{validacao.codigoDeveTer6Digitos}") String code) {
 }

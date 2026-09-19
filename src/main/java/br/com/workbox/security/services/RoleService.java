@@ -6,6 +6,7 @@ import br.com.workbox.security.entities.Role;
 import br.com.workbox.security.repositories.RoleRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,12 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RoleService {
 
-    private static final String ROLE_NOT_FOUND = "Role not found";
-
     private final RoleRepository roleRepository;
+    private final MessageSourceAccessor messages;
 
-    public RoleService(final RoleRepository roleRepository) {
+    public RoleService(final RoleRepository roleRepository, final MessageSourceAccessor messages) {
         this.roleRepository = roleRepository;
+        this.messages = messages;
     }
 
     @Transactional(readOnly = true)
@@ -33,7 +34,7 @@ public class RoleService {
 
     @Transactional(readOnly = true)
     public RoleDTO findById(final Long id) {
-        return toDto(roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(ROLE_NOT_FOUND)));
+        return toDto(roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada"))));
     }
 
     @Transactional
@@ -44,7 +45,7 @@ public class RoleService {
 
     @Transactional
     public RoleDTO update(final Long id, final RoleDTO dto) {
-        final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(ROLE_NOT_FOUND));
+        final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));
         role.setAuthority(dto.authority());
         return toDto(roleRepository.save(role));
     }
@@ -52,7 +53,7 @@ public class RoleService {
     /** Exclusão lógica — {@code @SQLRestriction} na entidade cuida do resto. */
     @Transactional
     public void delete(final Long id) {
-        final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(ROLE_NOT_FOUND));
+        final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));
         role.setDeletedAt(LocalDateTime.now());
         roleRepository.save(role);
     }

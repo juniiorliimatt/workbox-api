@@ -25,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.Authentication;
@@ -49,7 +51,11 @@ class AuthControllerTest {
         passwordResetService = mock(PasswordResetService.class);
         mfaService = mock(MfaService.class);
         avatarService = mock(AvatarService.class);
-        controller = new AuthController(jwtService, userApiService, loginAuditService, loginRateLimiter, passwordResetService, mfaService, avatarService);
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        controller = new AuthController(jwtService, userApiService, loginAuditService, loginRateLimiter, passwordResetService, mfaService, avatarService, messages);
         when(loginRateLimiter.isAllowed(anyString())).thenReturn(true);
     }
 

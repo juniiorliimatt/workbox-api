@@ -19,6 +19,7 @@ import br.com.workbox.security.services.PasswordResetService;
 import br.com.workbox.security.services.UserApiService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -47,6 +48,7 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final MfaService mfaService;
     private final AvatarService avatarService;
+    private final MessageSourceAccessor messages;
 
     public AuthController(final JwtService jwtService,
                            final UserApiService userApiService,
@@ -54,7 +56,8 @@ public class AuthController {
                            final LoginRateLimiter loginRateLimiter,
                            final PasswordResetService passwordResetService,
                            final MfaService mfaService,
-                           final AvatarService avatarService) {
+                           final AvatarService avatarService,
+                           final MessageSourceAccessor messages) {
         this.jwtService = jwtService;
         this.userApiService = userApiService;
         this.loginAuditService = loginAuditService;
@@ -62,6 +65,7 @@ public class AuthController {
         this.passwordResetService = passwordResetService;
         this.mfaService = mfaService;
         this.avatarService = avatarService;
+        this.messages = messages;
     }
 
     /** Auto-cadastro público — sempre USER, nunca aceita roles do payload (ver {@link UserApiService#register}). */
@@ -69,7 +73,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody @Valid final UserApiRegisterDTO dto, final HttpServletRequest request) {
         if (!loginRateLimiter.isAllowed("register:" + clientIp(request))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many registration attempts, try again later"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitCadastro")));
         }
         final var created = userApiService.register(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -80,7 +84,7 @@ public class AuthController {
         final var ip = clientIp(request);
         if (!loginRateLimiter.isAllowed("login:" + ip)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many login attempts, try again later"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitLogin")));
         }
 
         final var result = userApiService.attemptLogin(dto.email(), dto.password());
@@ -88,7 +92,7 @@ public class AuthController {
 
         if (!result.success()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid username or password"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, messages.getMessage("auth.credenciaisInvalidas")));
         }
 
         final var user = result.user();
@@ -108,14 +112,14 @@ public class AuthController {
         final var ip = clientIp(request);
         if (!loginRateLimiter.isAllowed("mfa-login:" + ip)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts, try again later"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitGenerico")));
         }
 
         final var user = jwtService.validateMfaChallengeToken(dto.mfaToken());
         if (!mfaService.verifyCode(user, dto.code())) {
             loginAuditService.record(user.getUsername(), false, "mfa_invalid_code", ip);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid MFA code"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, messages.getMessage("mfa.codigoInvalido")));
         }
         loginAuditService.record(user.getUsername(), true, "mfa_verified", ip);
         return ResponseEntity.ok(issueTokenPair(user));
@@ -159,7 +163,7 @@ public class AuthController {
     public ResponseEntity<?> refresh(@RequestBody @Valid final RefreshTokenDTO dto, final HttpServletRequest request) {
         if (!loginRateLimiter.isAllowed("refresh:" + clientIp(request))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many refresh attempts, try again later"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitRefresh")));
         }
 
         final var rotated = jwtService.rotateRefreshToken(dto.refreshToken());
@@ -219,7 +223,7 @@ public class AuthController {
         // extras contra o mesmo endereço.
         if (!loginRateLimiter.isAllowed("forgot-password:" + dto.email().toLowerCase())) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, "Too many password reset requests, try again later"));
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, messages.getMessage("auth.rateLimitResetSenha")));
         }
         // Sempre 204, exista ou não o e-mail — não revelar quais e-mails têm conta.
         passwordResetService.requestReset(dto.email());

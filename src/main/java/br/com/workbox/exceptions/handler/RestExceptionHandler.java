@@ -14,6 +14,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -40,6 +41,12 @@ public class RestExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(RestExceptionHandler.class);
 
+    private final MessageSourceAccessor messages;
+
+    public RestExceptionHandler(final MessageSourceAccessor messages) {
+        this.messages = messages;
+    }
+
     @ExceptionHandler(JwtException.class)
     public ProblemDetail handleJwtException(final JwtException exception) {
         return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
@@ -52,7 +59,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(InvalidRefreshTokenException.class)
     public ProblemDetail handleInvalidRefreshTokenException(final InvalidRefreshTokenException exception) {
-        return problem(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+        return problem(HttpStatus.UNAUTHORIZED, messages.getMessage("refreshToken.invalidoOuExpirado"));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -62,7 +69,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleMethodArgumentNotValid(final MethodArgumentNotValidException exception) {
-        final var detail = problem(HttpStatus.BAD_REQUEST, "Validation failed");
+        final var detail = problem(HttpStatus.BAD_REQUEST, messages.getMessage("erro.validacaoFalhou"));
         detail.setProperty("errors", exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> Map.of("field", error.getField(), "message", String.valueOf(error.getDefaultMessage())))
                 .toList());
@@ -71,7 +78,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ProblemDetail handleConstraintViolationException(final ConstraintViolationException exception) {
-        final var detail = problem(HttpStatus.BAD_REQUEST, "Validation failed");
+        final var detail = problem(HttpStatus.BAD_REQUEST, messages.getMessage("erro.validacaoFalhou"));
         detail.setProperty("errors", exception.getConstraintViolations().stream()
                 .map(violation -> Map.of("field", violation.getPropertyPath().toString(), "message", violation.getMessage()))
                 .toList());
@@ -81,13 +88,13 @@ public class RestExceptionHandler {
     @ExceptionHandler(DatabaseException.class)
     public ProblemDetail handleDatabaseException(final DatabaseException exception, final HttpServletRequest request) {
         logger.error("Database error on {}", request.getRequestURI(), exception);
-        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Database error");
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, messages.getMessage("erro.banco"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrityViolationException(final DataIntegrityViolationException exception, final HttpServletRequest request) {
         logger.error("Data integrity violation on {}", request.getRequestURI(), exception);
-        return problem(HttpStatus.CONFLICT, "Data integrity violation");
+        return problem(HttpStatus.CONFLICT, messages.getMessage("erro.integridadeReferencial"));
     }
 
     @ExceptionHandler(InvalidImageException.class)
@@ -97,7 +104,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ProblemDetail handleMaxUploadSizeExceededException(final MaxUploadSizeExceededException exception) {
-        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "File exceeds the maximum allowed size");
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, messages.getMessage("erro.arquivoExcedeTamanho"));
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
@@ -123,7 +130,7 @@ public class RestExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail handleMessageNotReadable(final HttpMessageNotReadableException exception) {
-        return problem(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
+        return problem(HttpStatus.BAD_REQUEST, messages.getMessage("erro.jsonMalFormado"));
     }
 
     /**
@@ -135,13 +142,13 @@ public class RestExceptionHandler {
      */
     @ExceptionHandler(NoResourceFoundException.class)
     public ProblemDetail handleNoResourceFound(final NoResourceFoundException exception) {
-        return problem(HttpStatus.NOT_FOUND, "No handler for this route");
+        return problem(HttpStatus.NOT_FOUND, messages.getMessage("erro.rotaNaoEncontrada"));
     }
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(final Exception exception, final HttpServletRequest request) {
         logger.error("Unhandled exception on {}", request.getRequestURI(), exception);
-        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, messages.getMessage("erro.inesperado"));
     }
 
     private ProblemDetail problem(final HttpStatus status, final String detail) {

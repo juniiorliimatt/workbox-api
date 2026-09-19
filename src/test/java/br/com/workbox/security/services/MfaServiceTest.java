@@ -16,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 class MfaServiceTest {
 
@@ -28,7 +30,11 @@ class MfaServiceTest {
     @BeforeEach
     void setUp() {
         userApiRepository = mock(UserApiRepository.class);
-        mfaService = new MfaService(userApiRepository);
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        mfaService = new MfaService(userApiRepository, messages);
     }
 
     private UserApi user() {

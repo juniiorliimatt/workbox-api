@@ -23,6 +23,8 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -39,7 +41,11 @@ class RestExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new RestExceptionHandler();
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        handler = new RestExceptionHandler(messages);
         request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/api/auth/login");
     }
@@ -68,7 +74,7 @@ class RestExceptionHandlerTest {
         final var response = handler.handleInvalidRefreshTokenException(new InvalidRefreshTokenException("Refresh token reuse detected"));
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
-        assertThat(response.getDetail()).isEqualTo("Invalid or expired refresh token");
+        assertThat(response.getDetail()).isEqualTo("Refresh token inválido ou expirado");
     }
 
     @Test
@@ -126,7 +132,7 @@ class RestExceptionHandlerTest {
                 new DatabaseException("constraint fk_users_role violated on table internal_x"), request);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        assertThat(response.getDetail()).isEqualTo("Database error");
+        assertThat(response.getDetail()).isEqualTo("Erro de banco de dados");
         assertThat(response.getDetail()).doesNotContain("fk_users_role", "internal_x");
     }
 
@@ -138,7 +144,7 @@ class RestExceptionHandlerTest {
                 request);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
-        assertThat(response.getDetail()).isEqualTo("Data integrity violation");
+        assertThat(response.getDetail()).isEqualTo("Violação de integridade referencial");
         assertThat(response.getDetail()).doesNotContain("idx_users_api_email_active");
     }
 
@@ -175,7 +181,7 @@ class RestExceptionHandlerTest {
         final var response = handler.handleMaxUploadSizeExceededException(new MaxUploadSizeExceededException(2_000_000L));
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE.value());
-        assertThat(response.getDetail()).isEqualTo("File exceeds the maximum allowed size");
+        assertThat(response.getDetail()).isEqualTo("Arquivo excede o tamanho máximo permitido");
     }
 
     @Test
@@ -195,7 +201,7 @@ class RestExceptionHandlerTest {
         final var response = handler.handleMessageNotReadable(exception);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
-        assertThat(response.getDetail()).isEqualTo("Malformed JSON request body");
+        assertThat(response.getDetail()).isEqualTo("Corpo da requisição JSON mal formado");
     }
 
     @Test
@@ -206,7 +212,7 @@ class RestExceptionHandlerTest {
         final var response = handler.handleNoResourceFound(exception);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
-        assertThat(response.getDetail()).isEqualTo("No handler for this route");
+        assertThat(response.getDetail()).isEqualTo("Nenhum handler para essa rota");
     }
 
     @Test
@@ -215,7 +221,7 @@ class RestExceptionHandlerTest {
         final var response = handler.handleUnexpected(new IllegalStateException("NPE em algum lugar sensível"), request);
 
         assertThat(response.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        assertThat(response.getDetail()).isEqualTo("Unexpected error");
+        assertThat(response.getDetail()).isEqualTo("Erro inesperado");
         assertThat(response.getDetail()).doesNotContain("NPE", "sensível");
     }
 

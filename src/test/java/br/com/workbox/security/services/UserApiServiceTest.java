@@ -31,6 +31,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -58,7 +60,11 @@ class UserApiServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserApiService(userApiRepository, roleRepository, passwordEncoder);
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        service = new UserApiService(userApiRepository, roleRepository, passwordEncoder, messages);
     }
 
     private UserApi.UserApiBuilder aUser() {
@@ -345,7 +351,7 @@ class UserApiServiceTest {
 
             assertThatThrownBy(() -> service.register(dto))
                     .isInstanceOf(UserAlreadyExistsException.class)
-                    .hasMessage("Email already in use");
+                    .hasMessage("E-mail já cadastrado");
             verify(userApiRepository, never()).save(any());
         }
 
@@ -400,7 +406,7 @@ class UserApiServiceTest {
 
             assertThatThrownBy(() -> service.save(dto))
                     .isInstanceOf(br.com.workbox.exceptions.InvalidRequestException.class)
-                    .hasMessage("Role id is required");
+                    .hasMessage("Id da role é obrigatório");
             verify(roleRepository, never()).findById(any());
             verify(userApiRepository, never()).save(any());
         }
@@ -491,7 +497,7 @@ class UserApiServiceTest {
 
             assertThatThrownBy(() -> service.update(dto))
                     .isInstanceOf(br.com.workbox.exceptions.InvalidRequestException.class)
-                    .hasMessage("Role id is required");
+                    .hasMessage("Id da role é obrigatório");
             verify(userApiRepository, never()).save(any());
         }
 

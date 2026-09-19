@@ -27,6 +27,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.MessageSourceAccessor;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,7 +46,11 @@ class JwtServiceTest {
     void setUp() {
         userApiService = mock(UserApiService.class);
         refreshTokenService = mock(RefreshTokenService.class);
-        jwtService = new JwtService(SECRET_KEY, userApiService, refreshTokenService);
+        final var messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
+        jwtService = new JwtService(SECRET_KEY, userApiService, refreshTokenService, messages);
     }
 
     @AfterEach
@@ -323,7 +329,7 @@ class JwtServiceTest {
 
             assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
                     .isInstanceOf(InvalidRefreshTokenException.class)
-                    .hasMessageContaining("reuse");
+                    .hasMessageContaining("Reuso");
         }
 
         @Test
@@ -336,7 +342,7 @@ class JwtServiceTest {
 
             assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
                     .isInstanceOf(InvalidRefreshTokenException.class)
-                    .hasMessageContaining("not recognized");
+                    .hasMessageContaining("não reconhecido");
         }
 
         @Test
@@ -355,7 +361,7 @@ class JwtServiceTest {
 
             assertThatThrownBy(() -> jwtService.rotateRefreshToken(accessToken))
                     .isInstanceOf(InvalidRefreshTokenException.class)
-                    .hasMessageContaining("not a refresh token");
+                    .hasMessageContaining("não é um refresh token");
         }
 
         @Test
@@ -368,7 +374,7 @@ class JwtServiceTest {
 
             assertThatThrownBy(() -> jwtService.rotateRefreshToken(token))
                     .isInstanceOf(InvalidRefreshTokenException.class)
-                    .hasMessageContaining("revoked");
+                    .hasMessageContaining("revogado");
         }
 
         @Test
@@ -410,7 +416,7 @@ class JwtServiceTest {
 
             assertThatThrownBy(() -> jwtService.validateMfaChallengeToken(accessToken))
                     .isInstanceOf(br.com.workbox.exceptions.InvalidTokenException.class)
-                    .hasMessageContaining("Not an MFA challenge token");
+                    .hasMessageContaining("desafio de MFA");
         }
 
         @Test

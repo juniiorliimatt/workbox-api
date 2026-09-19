@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,22 +29,24 @@ public class PasswordResetService {
 
     private static final int TOKEN_BYTES = 32;
     private static final Duration TOKEN_TTL = Duration.ofMinutes(30);
-    private static final String INVALID_OR_EXPIRED = "Invalid or expired reset token";
 
     private final PasswordResetTokenRepository tokenRepository;
     private final UserApiRepository userApiRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final MessageSourceAccessor messages;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PasswordResetService(final PasswordResetTokenRepository tokenRepository,
                                  final UserApiRepository userApiRepository,
                                  final PasswordEncoder passwordEncoder,
-                                 final MailService mailService) {
+                                 final MailService mailService,
+                                 final MessageSourceAccessor messages) {
         this.tokenRepository = tokenRepository;
         this.userApiRepository = userApiRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailService = mailService;
+        this.messages = messages;
     }
 
     /**
@@ -69,9 +72,9 @@ public class PasswordResetService {
     @Transactional
     public void resetPassword(final String rawToken, final String newPassword) {
         final var token = tokenRepository.findByTokenHash(hash(rawToken))
-                .orElseThrow(() -> new InvalidTokenException(INVALID_OR_EXPIRED));
+                .orElseThrow(() -> new InvalidTokenException(messages.getMessage("resetSenha.tokenInvalidoOuExpirado")));
         if (token.isUsed() || token.isExpired()) {
-            throw new InvalidTokenException(INVALID_OR_EXPIRED);
+            throw new InvalidTokenException(messages.getMessage("resetSenha.tokenInvalidoOuExpirado"));
         }
 
         final var user = token.getUser();

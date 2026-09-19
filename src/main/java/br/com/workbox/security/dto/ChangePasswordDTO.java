@@ -10,5 +10,5 @@ import jakarta.validation.constraints.Size;
  */
 
 public record ChangePasswordDTO(
-        @NotBlank(message = "Current password is mandatory") String currentPassword,
-        @NotBlank(message = "New password is mandatory") @Size(min = 8, max = 100) String newPassword) { }
+        @NotBlank(message = "{validacao.senhaAtualObrigatoria}") String currentPassword,
+        @NotBlank(message = "{validacao.novaSenhaObrigatoria}") @Size(min = 8, max = 100) String newPassword) { }

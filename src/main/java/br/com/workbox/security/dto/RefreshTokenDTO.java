@@ -8,4 +8,4 @@ import jakarta.validation.constraints.NotBlank;
  * @since 30-08-2026
  */
 
-public record RefreshTokenDTO(@NotBlank(message = "Refresh token is mandatory") String refreshToken) { }
+public record RefreshTokenDTO(@NotBlank(message = "{validacao.refreshTokenObrigatorio}") String refreshToken) { }

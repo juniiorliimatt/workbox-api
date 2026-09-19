@@ -11,6 +11,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
@@ -59,12 +60,13 @@ public class SecurityConfig {
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final ObjectMapper objectMapper;
     private final ApiClientUserDetailsService apiClientUserDetailsService;
+    private final MessageSourceAccessor messages;
 
     @Autowired
     public SecurityConfig(final Environment env, final JwtService jwtService,
                            final UserApiService userApiService, final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
                            final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler, final ObjectMapper objectMapper,
-                           final ApiClientUserDetailsService apiClientUserDetailsService) {
+                           final ApiClientUserDetailsService apiClientUserDetailsService, final MessageSourceAccessor messages) {
         this.env = env;
         this.jwtService = jwtService;
         this.userApiService = userApiService;
@@ -72,6 +74,7 @@ public class SecurityConfig {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.objectMapper = objectMapper;
         this.apiClientUserDetailsService = apiClientUserDetailsService;
+        this.messages = messages;
     }
 
     /**
@@ -147,9 +150,9 @@ public class SecurityConfig {
         // Spring Boot (HTML) em vez de JSON.
         httpSecurity.userDetailsService(userApiService).exceptionHandling(exceptionHandling -> exceptionHandling
                 .authenticationEntryPoint((request, response, authException) ->
-                        writeProblemDetail(response, HttpStatus.UNAUTHORIZED, "Unauthorized"))
+                        writeProblemDetail(response, HttpStatus.UNAUTHORIZED, messages.getMessage("seguranca.naoAutorizado")))
                 .accessDeniedHandler((request, response, accessDeniedException) ->
-                        writeProblemDetail(response, HttpStatus.FORBIDDEN, "Forbidden"))
+                        writeProblemDetail(response, HttpStatus.FORBIDDEN, messages.getMessage("seguranca.acessoNegado")))
         );
 
         // CorrelationIdFilter registrado primeiro: Spring Security não permite ancorar um

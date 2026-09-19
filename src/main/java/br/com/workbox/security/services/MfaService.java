@@ -12,6 +12,7 @@ import dev.samstevens.totp.qr.QrData;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.secret.SecretGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,11 +32,13 @@ public class MfaService {
     private static final String ISSUER = "workbox-api";
 
     private final UserApiRepository userApiRepository;
+    private final MessageSourceAccessor messages;
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
     private final CodeVerifier codeVerifier = new DefaultCodeVerifier(new DefaultCodeGenerator(), new SystemTimeProvider());
 
-    public MfaService(final UserApiRepository userApiRepository) {
+    public MfaService(final UserApiRepository userApiRepository, final MessageSourceAccessor messages) {
         this.userApiRepository = userApiRepository;
+        this.messages = messages;
     }
 
     @Transactional
@@ -57,7 +60,7 @@ public class MfaService {
     @Transactional
     public void verifyAndEnable(final UserApi user, final String code) {
         if (user.getMfaSecret() == null || !codeVerifier.isValidCode(user.getMfaSecret(), code)) {
-            throw new InvalidTokenException("Invalid MFA code");
+            throw new InvalidTokenException(messages.getMessage("mfa.codigoInvalido"));
         }
         user.setMfaEnabled(true);
         userApiRepository.save(user);
@@ -66,7 +69,7 @@ public class MfaService {
     @Transactional
     public void disable(final UserApi user, final String code) {
         if (!Boolean.TRUE.equals(user.getMfaEnabled()) || !codeVerifier.isValidCode(user.getMfaSecret(), code)) {
-            throw new LoginInvalidException("Invalid MFA code");
+            throw new LoginInvalidException(messages.getMessage("mfa.codigoInvalido"));
         }
         user.setMfaSecret(null);
         user.setMfaEnabled(false);

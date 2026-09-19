@@ -16,6 +16,7 @@ import br.com.workbox.security.repositories.UserApiRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -42,7 +43,6 @@ import java.util.stream.Collectors;
 @Service
 public class UserApiService implements UserDetailsService {
 
-    private static final String USER_NOT_FOUND = "User not found";
     static final int MAX_FAILED_ATTEMPTS = 5;
     static final long LOCK_DURATION_MINUTES = 15;
 
@@ -50,12 +50,15 @@ public class UserApiService implements UserDetailsService {
     private final UserApiRepository userApiRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MessageSourceAccessor messages;
 
     @Autowired
-    public UserApiService(final UserApiRepository userApiRepository, final RoleRepository roleRepository, final PasswordEncoder passwordEncoder) {
+    public UserApiService(final UserApiRepository userApiRepository, final RoleRepository roleRepository,
+                           final PasswordEncoder passwordEncoder, final MessageSourceAccessor messages) {
         this.userApiRepository = userApiRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.messages = messages;
     }
 
     /** Nome do método é o contrato de {@link UserDetailsService} — o identificador recebido é o email, não um username. */
@@ -63,7 +66,7 @@ public class UserApiService implements UserDetailsService {
     public UserDetails loadUserByUsername(final String email) throws UsernameNotFoundException {
         logger.info("load by email");
         return userApiRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
+                .orElseThrow(() -> new UsernameNotFoundException(messages.getMessage("usuario.naoEncontrado")));
     }
 
     /**
@@ -97,7 +100,7 @@ public class UserApiService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserApiDTO findById(final UUID id) {
         logger.info("find by id");
-        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         return toDto(user);
     }
 
@@ -123,9 +126,9 @@ public class UserApiService implements UserDetailsService {
         final var roles = new HashSet<Role>();
         for (Role role : requestedRoles) {
             if (role.getId() == null) {
-                throw new InvalidRequestException("Role id is required");
+                throw new InvalidRequestException(messages.getMessage("role.idObrigatorio"));
             }
-            final Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+            final Role existingRole = roleRepository.findById(role.getId()).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));
             roles.add(existingRole);
         }
         return roles;
@@ -141,10 +144,10 @@ public class UserApiService implements UserDetailsService {
     @Transactional
     public UserApiDTO register(final UserApiRegisterDTO dto) {
         if (userApiRepository.findByEmail(dto.email()).isPresent()) {
-            throw new UserAlreadyExistsException("Email already in use");
+            throw new UserAlreadyExistsException(messages.getMessage("usuario.emailJaCadastrado"));
         }
         final var userRole = roleRepository.findByAuthority("USER")
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));
 
         final var user = new UserApi();
         user.setSocialName(dto.socialName());
@@ -161,7 +164,7 @@ public class UserApiService implements UserDetailsService {
     @Transactional
     public UserApiDTO update(final UserApiInsertOrUpdateDTO dto) {
         logger.info("update user");
-        final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+        final var user = userApiRepository.findById(dto.id()).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         user.setSocialName(dto.socialName());
         if (dto.password() != null && !dto.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(dto.password()));
@@ -184,7 +187,7 @@ public class UserApiService implements UserDetailsService {
     @Transactional
     public void delete(final UUID id) {
         logger.info("delete user (soft)");
-        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
+        final var user = userApiRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("usuario.naoEncontrado")));
         user.setDeletedAt(LocalDateTime.now());
         userApiRepository.save(user);
     }
@@ -241,7 +244,7 @@ public class UserApiService implements UserDetailsService {
     public void changePassword(final String email, final ChangePasswordDTO dto) {
         final var user = (UserApi) loadUserByUsername(email);
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new LoginInvalidException("Current password is incorrect");
+            throw new LoginInvalidException(messages.getMessage("usuario.senhaAtualIncorreta"));
         }
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         user.setTokenVersion(user.getTokenVersion() + 1);

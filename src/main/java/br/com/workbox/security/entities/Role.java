@@ -52,7 +52,7 @@ public class Role implements Serializable, GrantedAuthority {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Field authority is required")
+    @NotBlank(message = "{validacao.authorityObrigatoria}")
     private String authority;
 
     @NotAudited

@@ -8,4 +8,4 @@ import jakarta.validation.constraints.NotBlank;
  * @since 29-08-2026
  */
 
-public record RoleDTO(Long id, @NotBlank(message = "Field authority is required") String authority) { }
+public record RoleDTO(Long id, @NotBlank(message = "{validacao.authorityObrigatoria}") String authority) { }
