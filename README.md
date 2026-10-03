@@ -72,7 +72,7 @@ O Liquibase (`db/changelog/`) já semeia dois usuários (`admin`, `USER`/`ADMIN`
 ### Contas de teste (QA)
 
 Contas fixas, criadas via `/api/v1/auth/register` no banco local, de uso **exclusivo do
-Claude Code e do Antigravity** durante testes manuais/exploratórios — não usar em
+Claude Code** durante testes manuais/exploratórios — não usar em
 demonstração pro usuário final nem depender delas em teste automatizado (unit/BDD já têm
 suas próprias fixtures). Diferente das contas seed (`admin`/`user`) acima, que já foram
 alteradas várias vezes por teste manual real e não têm senha estável — estas aqui são
@@ -237,8 +237,8 @@ A task sobe a aplicação com o profile `test` (H2 em memória, sem dependência
 Postgres), baixa `/v3/api-docs.yaml` e grava em `openapi/openapi.yaml`. Com o app
 rodando, o Swagger UI fica em `/swagger-ui/index.html`.
 
-Ver também: [AGENTS.md](../AGENTS.md), que descreve como este contrato alinha o
-desenvolvimento entre o agente de backend (Claude Code) e o de frontend (Antigravity).
+Ver também: [CLAUDE.md](../CLAUDE.md), que descreve como este contrato alinha backend e
+frontend (ambos desenvolvidos pelo Claude Code).
 
 ## Convenção de commits
 
@@ -250,7 +250,7 @@ Sempre em português (pt-BR), Conventional Commits com o prefixo de tipo em ingl
 
 Tipos aceitos: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `style`, `perf`, `ci`,
 `revert`. Vale pros quatro repositórios do monorepo — regra completa e exemplo em
-[AGENTS.md](../AGENTS.md#convenção-de-mensagens-de-commit).
+[CLAUDE.md](../CLAUDE.md#convenção-de-mensagens-de-commit).
 
 ## Testes
 
