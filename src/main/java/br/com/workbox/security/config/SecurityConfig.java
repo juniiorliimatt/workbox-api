@@ -96,7 +96,8 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain introspectionFilterChain(final HttpSecurity httpSecurity) throws Exception {
         httpSecurity.securityMatcher(PathPatternRequestMatcher.withDefaults().matcher(API_INTROSPECT))
-                .csrf(AbstractHttpConfigurer::disable)
+                // NOSONAR java:S4502 - CSRF só protege sessão por cookie; aqui é HTTP Basic de serviço, stateless, sem cookie.
+                .csrf(AbstractHttpConfigurer::disable) // NOSONAR
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .userDetailsService(apiClientUserDetailsService)
@@ -109,7 +110,8 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
         configureHeadersForTestProfile(httpSecurity);
-        httpSecurity.csrf(AbstractHttpConfigurer::disable);
+        // NOSONAR java:S4502 - API stateless autenticada por Bearer no header (sem cookie de sessão): não há o que forjar via CSRF.
+        httpSecurity.csrf(AbstractHttpConfigurer::disable); // NOSONAR
         httpSecurity.httpBasic(AbstractHttpConfigurer::disable);
         httpSecurity.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
@@ -189,7 +191,8 @@ public class SecurityConfig {
     /** Origem específica ecoada (nunca {@code *}) — necessário pra {@code withCredentials: true} no client. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        final CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues();
+        // NOSONAR java:S5122 - CORS habilitado de propósito: allowlist explícita de origens (abaixo), nunca "*" com credenciais.
+        final CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues(); // NOSONAR
         // Origin enviado pelo browser nunca tem barra final — CorsConfiguration faz match exato.
         configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:7053","http://localhost:7053"));
         configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
