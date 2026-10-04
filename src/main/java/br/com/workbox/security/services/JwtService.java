@@ -28,7 +28,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -187,7 +187,7 @@ public class JwtService extends OncePerRequestFilter {
 
     private String issueRefreshToken(final UserApi user, final UUID familyId) {
         final var jti = UUID.randomUUID();
-        final var expiresAt = LocalDateTime.now().plus(Duration.ofMillis(REFRESH_TOKEN_VALIDITY_MS));
+        final var expiresAt = Instant.now().plus(Duration.ofMillis(REFRESH_TOKEN_VALIDITY_MS));
         refreshTokenService.issue(user.getId(), familyId, jti, expiresAt);
 
         final var claims = new HashMap<String, Object>();

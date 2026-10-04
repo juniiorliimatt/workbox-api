@@ -1,7 +1,7 @@
 package br.com.workbox.security.services;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,8 +43,9 @@ public class RefreshTokenService {
     }
 
     /** Persiste um refresh token novo no Redis (TTL = tempo até {@code expiresAt}) e indexa na família de rotação. */
-    public void issue(final UUID userId, final UUID familyId, final UUID jti, final LocalDateTime expiresAt) {
-        final var ttl = Duration.between(LocalDateTime.now(), expiresAt);
+    public void issue(final UUID userId, final UUID familyId, final UUID jti, final Instant expiresAt) {
+        // Instant (e não LocalDateTime): a duração até o vencimento não pode depender do fuso da JVM.
+        final var ttl = Duration.between(Instant.now(), expiresAt);
         final var refreshKey = REFRESH_KEY_PREFIX + jti;
         redisTemplate.opsForHash().putAll(refreshKey, Map.of(
                 "family_id", familyId.toString(),

@@ -2,7 +2,8 @@ package br.com.workbox.security.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -76,7 +77,7 @@ class RefreshTokenServiceIT {
             final var userId = UUID.randomUUID();
             final var familyId = UUID.randomUUID();
             final var jti = UUID.randomUUID();
-            service.issue(userId, familyId, jti, LocalDateTime.now().plusDays(1));
+            service.issue(userId, familyId, jti, Instant.now().plus(1, ChronoUnit.DAYS));
 
             final var result = service.consume(jti);
 
@@ -90,7 +91,7 @@ class RefreshTokenServiceIT {
             final var userId = UUID.randomUUID();
             final var familyId = UUID.randomUUID();
             final var jti = UUID.randomUUID();
-            service.issue(userId, familyId, jti, LocalDateTime.now().plusDays(1));
+            service.issue(userId, familyId, jti, Instant.now().plus(1, ChronoUnit.DAYS));
 
             service.consume(jti);
             final var result = service.consume(jti);
@@ -106,9 +107,9 @@ class RefreshTokenServiceIT {
             final var familyId = UUID.randomUUID();
             final var firstJti = UUID.randomUUID();
             final var secondJti = UUID.randomUUID();
-            service.issue(userId, familyId, firstJti, LocalDateTime.now().plusDays(1));
+            service.issue(userId, familyId, firstJti, Instant.now().plus(1, ChronoUnit.DAYS));
             service.consume(firstJti);
-            service.issue(userId, familyId, secondJti, LocalDateTime.now().plusDays(1));
+            service.issue(userId, familyId, secondJti, Instant.now().plus(1, ChronoUnit.DAYS));
 
             // Reapresenta o primeiro jti (já consumido) — reuso, revoga a família toda,
             // incluindo o secondJti que ainda estava válido.
@@ -122,7 +123,7 @@ class RefreshTokenServiceIT {
         @DisplayName("issue aplica TTL — chave expira sozinha sem job de cleanup")
         void issueAppliesNativeTtl() throws InterruptedException {
             final var jti = UUID.randomUUID();
-            service.issue(UUID.randomUUID(), UUID.randomUUID(), jti, LocalDateTime.now().plusSeconds(1));
+            service.issue(UUID.randomUUID(), UUID.randomUUID(), jti, Instant.now().plusSeconds(1));
 
             Thread.sleep(1500);
 
