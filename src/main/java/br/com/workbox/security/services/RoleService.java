@@ -1,11 +1,16 @@
 package br.com.workbox.security.services;
 
+import br.com.workbox.exceptions.InvalidRequestException;
 import br.com.workbox.exceptions.ResourceNotFoundException;
+import br.com.workbox.security.dto.ModuleDTO;
 import br.com.workbox.security.dto.RoleDTO;
+import br.com.workbox.security.dto.RoleModuleDTO;
 import br.com.workbox.security.entities.Role;
+import br.com.workbox.security.repositories.ModuleRepository;
 import br.com.workbox.security.repositories.RoleRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RoleService {
 
+    private static final Set<String> ROLES_DE_SISTEMA = Set.of("ADMIN", "USER");
+
     private final RoleRepository roleRepository;
+    private final ModuleRepository moduleRepository;
     private final MessageSourceAccessor messages;
 
-    public RoleService(final RoleRepository roleRepository, final MessageSourceAccessor messages) {
+    public RoleService(final RoleRepository roleRepository, final ModuleRepository moduleRepository, final MessageSourceAccessor messages) {
         this.roleRepository = roleRepository;
+        this.moduleRepository = moduleRepository;
         this.messages = messages;
     }
 
@@ -62,7 +71,26 @@ public class RoleService {
         roleRepository.save(role);
     }
 
+    /**
+     * Vincula a role a um módulo (ou desvincula, com {@code moduleId} nulo). {@code ADMIN}
+     * (acessa tudo) e {@code USER} (role inicial, sem acesso a módulo) ficam fora do vínculo.
+     * Vale na hora: o acesso é recalculado a cada introspecção, sem esperar o token expirar.
+     */
+    @Transactional
+    public RoleDTO vincularModulo(final Long id, final RoleModuleDTO dto) {
+        final var role = roleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("role.naoEncontrada")));
+        if (ROLES_DE_SISTEMA.contains(role.getAuthority())) {
+            throw new InvalidRequestException(messages.getMessage("role.sistemaNaoVinculavel"));
+        }
+        final var module = dto.moduleId() == null ? null
+                : moduleRepository.findById(dto.moduleId()).orElseThrow(() -> new ResourceNotFoundException(messages.getMessage("modulo.naoEncontrado")));
+        role.setModule(module);
+        return toDto(roleRepository.save(role));
+    }
+
     private RoleDTO toDto(final Role role) {
-        return new RoleDTO(role.getId(), role.getAuthority());
+        final var module = role.getModule();
+        return new RoleDTO(role.getId(), role.getAuthority(),
+                module == null ? null : new ModuleDTO(module.getId(), module.getCode(), module.getName()));
     }
 }

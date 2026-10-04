@@ -37,6 +37,14 @@ Entidades: `UserApi`, `Role`, `LoginAudit`, `PasswordResetToken`, `ApiClient`
 - **Prefixo `ROLE_` só existe no claim `roles` do JWT/introspecção.** No banco e em
   `/api/v1/role` e `/api/v1/user/**` a authority é pura (`ADMIN`, `USER`). Não confundir
   nem "normalizar" — já causou uma role `ADMIN` virar `ROLE_ADMIN` no banco.
+- **Acesso a módulos** (`AppModule`, tabela `modules`, `roles.module_id`): `ADMIN` acessa
+  todo o catálogo; qualquer outro usuário só os módulos das roles que tem. `USER` é a role
+  inicial de todo cadastro e **não libera módulo nenhum** — um ADMIN concede a role de
+  módulo depois (`PUT /api/v1/role/{id}/module`). `ModuleAccessService.codigosDo` calcula
+  os códigos; a introspecção devolve `modules` lido do **banco** (vale já, sem esperar o
+  access token de 15 min expirar) e os resource servers exigem o módulo deles (403).
+  Módulo novo = changeset Liquibase novo (módulo + role vinculada), nunca CRUD. A entidade
+  chama-se `AppModule` pra não colidir com `java.lang.Module`.
 - **Refresh tokens no Redis** (`RefreshTokenService`, chaves `refresh:{jti}` e
   `family:{familyId}`, TTL nativo). Detecção de reuso + revogação da família roda **atômica
   em Lua** (`consume_refresh_token.lua`, `RedisConfig`) — não reescrever como

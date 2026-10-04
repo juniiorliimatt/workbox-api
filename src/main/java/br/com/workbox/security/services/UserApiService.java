@@ -50,14 +50,17 @@ public class UserApiService implements UserDetailsService {
     private final UserApiRepository userApiRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ModuleAccessService moduleAccessService;
     private final MessageSourceAccessor messages;
 
     @Autowired
     public UserApiService(final UserApiRepository userApiRepository, final RoleRepository roleRepository,
-                           final PasswordEncoder passwordEncoder, final MessageSourceAccessor messages) {
+                           final PasswordEncoder passwordEncoder, final ModuleAccessService moduleAccessService,
+                           final MessageSourceAccessor messages) {
         this.userApiRepository = userApiRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.moduleAccessService = moduleAccessService;
         this.messages = messages;
     }
 
@@ -110,7 +113,9 @@ public class UserApiService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserApiDTO me(final String email) {
         final var user = (UserApi) loadUserByUsername(email);
-        return toDto(user);
+        final var dto = toDto(user);
+        dto.setModules(moduleAccessService.codigosDo(user));
+        return dto;
     }
 
     /** Criação de usuário pelo admin — diferente de {@link #cadastrar}, aceita roles do payload (ver {@link #resolveRoles}). */
@@ -268,6 +273,6 @@ public class UserApiService implements UserDetailsService {
         final var roles = user.getRoles().stream()
                 .map(role -> new RoleDTO(role.getId(), role.getAuthority()))
                 .collect(Collectors.toSet());
-        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled(), avatarUrl, roles);
+        return new UserApiDTO(user.getId(), user.getSocialName(), user.getEmail(), user.isEnabled(), avatarUrl, roles, null);
     }
 }

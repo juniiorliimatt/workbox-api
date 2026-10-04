@@ -32,7 +32,7 @@ br.com.workbox
 ├── exceptions/         Exceções de domínio + handler global (RestExceptionHandler)
 └── security/
     ├── config/         Spring Security, CORS, JWT filter
-    ├── controllers/    AuthController, UserApiController, RoleController, AuditController
+    ├── controllers/    AuthController, UserApiController, RoleController, ModuleController, AuditController
     ├── dto/            DTOs de entrada/saída
     ├── entities/        UserApi, Role, RefreshToken, LoginAudit, PasswordResetToken
     ├── oauth2/         Login social Google (opt-in via env)
@@ -131,6 +131,8 @@ JWT via `POST /api/v1/auth/login` (retorna `access_token` + `refresh_token`) e
 | `PUT /api/v1/user/update` | ADMIN | Atualiza usuário |
 | `DELETE /api/v1/user/{id}` | ADMIN | Remove usuário |
 | `GET/POST/PUT/DELETE /api/v1/role` | Bearer (leitura = USER ou ADMIN; escrita = ADMIN) | CRUD de roles, exclusão lógica |
+| `PUT /api/v1/role/{id}/module` | Bearer ADMIN | Vincula a role a um módulo (`{"moduleId": 1}`) ou desvincula (`{"moduleId": null}`). `ADMIN` e `USER` não podem ser vinculadas (400) |
+| `GET /api/v1/module` | Bearer ADMIN | Catálogo de módulos (`FINANCAS`, `FORZA`). Só migrations criam módulos |
 | `GET /api/v1/audit/logins` | ADMIN | Tentativas de login (paginado; filtros opcionais `email`, `from`, `to` ISO-8601) |
 | `GET /api/v1/audit/users/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de um usuário |
 | `GET /api/v1/audit/roles/{id}/history` | ADMIN | Histórico de revisões (Hibernate Envers) de uma role |

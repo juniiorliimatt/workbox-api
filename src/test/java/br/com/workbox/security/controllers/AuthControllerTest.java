@@ -83,7 +83,7 @@ class AuthControllerTest {
         @DisplayName("cadastro válido delega ao UserApiService e responde 201")
         void createsUser() {
             final var dto = new UserApiRegisterDTO("alice", "alice@example.com", "S3nh@Forte!");
-            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null, java.util.Set.of());
+            final var created = new br.com.workbox.security.dto.UserApiDTO(UUID.randomUUID(), "alice", "alice@example.com", true, null, java.util.Set.of(), null);
             when(userApiService.cadastrar(dto)).thenReturn(created);
 
             final var response = controller.register(dto, new MockHttpServletRequest());
@@ -239,7 +239,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("delega ao JwtService e devolve o resultado tal qual")
         void delegatesToJwtService() {
-            final var result = new JwtService.IntrospectionResult(true, "alice@example.com", java.util.List.of("ROLE_USER"), 123L);
+            final var result = new JwtService.IntrospectionResult(true, "alice@example.com", java.util.List.of("ROLE_USER"), java.util.Set.of("FINANCAS"), 123L);
             when(jwtService.introspect("tok")).thenReturn(result);
 
             final var response = controller.introspect("tok");

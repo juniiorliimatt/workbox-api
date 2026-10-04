@@ -56,6 +56,9 @@ class UserApiServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private ModuleAccessService moduleAccessService;
+
     private UserApiService service;
 
     @BeforeEach
@@ -64,7 +67,7 @@ class UserApiServiceTest {
         messageSource.setBasename("messages");
         messageSource.setDefaultEncoding("UTF-8");
         final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
-        service = new UserApiService(userApiRepository, roleRepository, passwordEncoder, messages);
+        service = new UserApiService(userApiRepository, roleRepository, passwordEncoder, moduleAccessService, messages);
     }
 
     private UserApi.UserApiBuilder aUser() {
@@ -80,6 +83,23 @@ class UserApiServiceTest {
                 .tokenVersion(0L)
                 .failedLoginAttempts(0)
                 .roles(Set.of());
+    }
+
+    @Nested
+    @DisplayName("me")
+    class Me {
+
+        @Test
+        @DisplayName("devolve os módulos que o usuário pode acessar")
+        void includesAccessibleModules() {
+            final var user = aUser().build();
+            when(userApiRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+            when(moduleAccessService.codigosDo(user)).thenReturn(Set.of("FORZA"));
+
+            final var dto = service.me(EMAIL);
+
+            assertThat(dto.getModules()).containsExactly("FORZA");
+        }
     }
 
     @Nested

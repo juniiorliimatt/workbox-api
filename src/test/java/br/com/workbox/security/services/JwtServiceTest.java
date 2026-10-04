@@ -40,6 +40,7 @@ class JwtServiceTest {
 
     private UserApiService userApiService;
     private RefreshTokenService refreshTokenService;
+    private ModuleAccessService moduleAccessService;
     private JwtService jwtService;
 
     @BeforeEach
@@ -50,7 +51,8 @@ class JwtServiceTest {
         messageSource.setBasename("messages");
         messageSource.setDefaultEncoding("UTF-8");
         final var messages = new MessageSourceAccessor(messageSource, java.util.Locale.of("pt", "BR"));
-        jwtService = new JwtService(SECRET_KEY, userApiService, refreshTokenService, messages);
+        moduleAccessService = mock(ModuleAccessService.class);
+        jwtService = new JwtService(SECRET_KEY, userApiService, refreshTokenService, moduleAccessService, messages);
     }
 
     @AfterEach
@@ -238,6 +240,25 @@ class JwtServiceTest {
             assertThat(result.sub()).isEqualTo("alice");
             assertThat(result.roles()).isEqualTo(List.of("ROLE_USER"));
             assertThat(result.exp()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devolve os módulos atuais do usuário, lidos do banco e não do token")
+        void returnsCurrentModules() {
+            final var user = enabledUser("alice");
+            when(userApiService.loadUserByUsername("alice")).thenReturn(user);
+            when(moduleAccessService.codigosDo(user)).thenReturn(Set.of("FINANCAS"));
+            final var token = rawToken("access", "alice", 60_000, 0L);
+
+            final var result = jwtService.introspect(token);
+
+            assertThat(result.modules()).containsExactly("FINANCAS");
+        }
+
+        @Test
+        @DisplayName("token inativo não traz módulos")
+        void inactiveHasNoModules() {
+            assertThat(JwtService.IntrospectionResult.inactive().modules()).isNull();
         }
 
         @Test

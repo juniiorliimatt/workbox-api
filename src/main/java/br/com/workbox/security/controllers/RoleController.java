@@ -1,6 +1,7 @@
 package br.com.workbox.security.controllers;
 
 import br.com.workbox.security.dto.RoleDTO;
+import br.com.workbox.security.dto.RoleModuleDTO;
 import br.com.workbox.security.services.RoleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,12 @@ public class RoleController {
     @PutMapping("/{id}")
     public ResponseEntity<RoleDTO> update(@PathVariable final Long id, @RequestBody @Valid final RoleDTO dto) {
         return ResponseEntity.ok(roleService.update(id, dto));
+    }
+
+    /** Vincula a role a um módulo (ou desvincula, com {@code moduleId} nulo) — ADMIN-only. */
+    @PutMapping("/{id}/module")
+    public ResponseEntity<RoleDTO> vincularModulo(@PathVariable final Long id, @RequestBody final RoleModuleDTO dto) {
+        return ResponseEntity.ok(roleService.vincularModulo(id, dto));
     }
 
     /** Exclusão lógica de uma role — ADMIN-only. */

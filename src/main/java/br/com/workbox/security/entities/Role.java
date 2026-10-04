@@ -5,8 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -27,6 +30,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.NotAudited;
+import org.hibernate.envers.RelationTargetAuditMode;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 
@@ -58,6 +62,14 @@ public class Role implements Serializable, GrantedAuthority {
     @NotAudited
     @ManyToMany(mappedBy = "roles")
     private Set<UserApi> users = new HashSet<>();
+
+    // Módulo que esta role libera (null = não libera nenhum; é o caso de ADMIN e USER).
+    // O catálogo de módulos não é auditado, só o vínculo (coluna module_id em roles_aud).
+    @Setter
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "module_id")
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
+    private AppModule module;
 
     @CreatedDate
     @Column(updatable = false)

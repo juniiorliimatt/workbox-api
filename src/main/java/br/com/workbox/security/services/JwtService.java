@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -62,14 +63,17 @@ public class JwtService extends OncePerRequestFilter {
     private final SecretKey secretKey;
     private final UserApiService userApiService;
     private final RefreshTokenService refreshTokenService;
+    private final ModuleAccessService moduleAccessService;
     private final MessageSourceAccessor messages;
 
     @Autowired
     public JwtService(final SecretKey secretKey, final UserApiService userApiService,
-                       final RefreshTokenService refreshTokenService, final MessageSourceAccessor messages) {
+                       final RefreshTokenService refreshTokenService, final ModuleAccessService moduleAccessService,
+                       final MessageSourceAccessor messages) {
         this.secretKey = secretKey;
         this.userApiService = userApiService;
         this.refreshTokenService = refreshTokenService;
+        this.moduleAccessService = moduleAccessService;
         this.messages = messages;
     }
 
@@ -265,7 +269,10 @@ public class JwtService extends OncePerRequestFilter {
             if (resolved == null) {
                 return IntrospectionResult.inactive();
             }
-            return new IntrospectionResult(true, resolved.username(), resolved.roles(), resolved.expiration().toInstant().getEpochSecond());
+            // Módulos vêm do banco (não do token): conceder/revogar acesso vale já na próxima
+            // chamada dos resource servers, sem esperar o access token expirar.
+            return new IntrospectionResult(true, resolved.username(), resolved.roles(),
+                    moduleAccessService.codigosDo(resolved.user()), resolved.expiration().toInstant().getEpochSecond());
         } catch (JwtException | IllegalArgumentException e) {
             return IntrospectionResult.inactive();
         }
@@ -291,15 +298,15 @@ public class JwtService extends OncePerRequestFilter {
             return null;
         }
         final var roles = (List<String>) claims.get("roles");
-        return new ResolvedAccessToken(username, roles, claims.getExpiration());
+        return new ResolvedAccessToken(username, roles, userDetail, claims.getExpiration());
     }
 
-    private record ResolvedAccessToken(String username, List<String> roles, Date expiration) {
+    private record ResolvedAccessToken(String username, List<String> roles, UserApi user, Date expiration) {
     }
 
-    public record IntrospectionResult(boolean active, String sub, List<String> roles, Long exp) {
+    public record IntrospectionResult(boolean active, String sub, List<String> roles, Set<String> modules, Long exp) {
         public static IntrospectionResult inactive() {
-            return new IntrospectionResult(false, null, null, null);
+            return new IntrospectionResult(false, null, null, null, null);
         }
     }
 

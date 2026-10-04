@@ -317,6 +317,20 @@ paths:
           description: OK
       tags:
       - auth-controller
+  /api/v1/module:
+    get:
+      operationId: findAll_2
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleDTO"
+          description: OK
+      tags:
+      - module-controller
   /api/v1/role:
     get:
       operationId: findAll
@@ -395,6 +409,31 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RoleDTO"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RoleDTO"
+          description: OK
+      tags:
+      - role-controller
+  /api/v1/role/{id}/module:
+    put:
+      operationId: vincularModulo
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleModuleDTO"
         required: true
       responses:
         "200":
@@ -551,6 +590,21 @@ paths:
       - user-api-controller
 components:
   schemas:
+    AppModule:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - name
     ChangePasswordDTO:
       type: object
       properties:
@@ -590,6 +644,11 @@ components:
         id:
           type: string
           format: uuid
+        modules:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
         roles:
           type: array
           items:
@@ -619,6 +678,11 @@ components:
         exp:
           type: integer
           format: int64
+        modules:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
         roles:
           type: array
           items:
@@ -699,6 +763,16 @@ components:
       required:
       - code
       - mfaToken
+    ModuleDTO:
+      type: object
+      properties:
+        code:
+          type: string
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
     PageLoginAuditDTO:
       type: object
       properties:
@@ -834,6 +908,8 @@ components:
         id:
           type: integer
           format: int64
+        module:
+          $ref: "#/components/schemas/AppModule"
         updatedAt:
           type: string
           format: date-time
@@ -855,8 +931,16 @@ components:
         id:
           type: integer
           format: int64
+        module:
+          $ref: "#/components/schemas/ModuleDTO"
       required:
       - authority
+    RoleModuleDTO:
+      type: object
+      properties:
+        moduleId:
+          type: integer
+          format: int64
     RoleRevisionDTO:
       type: object
       properties:
@@ -973,6 +1057,11 @@ components:
         id:
           type: string
           format: uuid
+        modules:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
         roles:
           type: array
           items:

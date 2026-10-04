@@ -26,5 +26,7 @@ public class UserApiDTO extends RepresentationModel<UserApiDTO> {
     private boolean enabled;
     private String avatarUrl;
     private Set<RoleDTO> roles;
+    // Códigos dos módulos que o usuário pode acessar (ADMIN: todos). Só é preenchido em /auth/me.
+    private Set<String> modules;
 
 }
