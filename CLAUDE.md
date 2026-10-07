@@ -101,9 +101,8 @@ Entidades: `UserApi`, `Role`, `LoginAudit`, `PasswordResetToken`, `ApiClient`
 ## Contrato (OpenAPI)
 - `openapi/openapi.yaml` é a fonte da verdade; o front consome só dele. Mudou endpoint/
   DTO/auth → regenerar (`generateOpenApiDocs`) e commitar junto (CI `contract-drift-check`
-  quebra se divergir). O global manda criar/atualizar contrato só sob demanda do dev
-  (`@openapi`) em geral, mas neste monorepo a regra do `CLAUDE.md` da raiz prevalece:
-  alterar o contrato observável inclui regenerar o arquivo na mesma tarefa.
+  quebra se divergir). O contrato é **obrigatório e anterior ao front** (global e raiz): alterar o
+  contrato observável inclui regenerar o arquivo na mesma tarefa, sem esperar pedido.
 - Mudança de contrato observável → ajustar `workbox-app` na mesma tarefa (ver raiz).
 - `springdoc.writer-with-order-by-keys=true` mantém a saída determinística.
 
