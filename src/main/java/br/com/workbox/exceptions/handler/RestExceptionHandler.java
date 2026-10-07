@@ -18,7 +18,10 @@ import org.springframework.context.support.MessageSourceAccessor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -143,6 +146,20 @@ public class RestExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ProblemDetail handleNoResourceFound(final NoResourceFoundException exception) {
         return problem(HttpStatus.NOT_FOUND, messages.getMessage("erro.rotaNaoEncontrada"));
+    }
+
+    /** Método HTTP errado para a rota é erro do client (405, com {@code Allow}); sem este handler virava 500 no catch-all. */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMethodNotSupported(final HttpRequestMethodNotSupportedException exception) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(exception.getHeaders())
+                .body(problem(HttpStatus.METHOD_NOT_ALLOWED, messages.getMessage("erro.metodoNaoSuportado")));
+    }
+
+    /** {@code Content-Type} que a rota não consome é erro do client (415); sem este handler virava 500 no catch-all. */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMediaTypeNotSupported(final HttpMediaTypeNotSupportedException exception) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).headers(exception.getHeaders())
+                .body(problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, messages.getMessage("erro.tipoMidiaNaoSuportado")));
     }
 
     @ExceptionHandler(Exception.class)

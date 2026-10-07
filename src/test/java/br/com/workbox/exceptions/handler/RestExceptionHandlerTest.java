@@ -216,6 +216,32 @@ class RestExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("HttpRequestMethodNotSupportedException vira 405 com o Allow, não 500")
+    void methodNotSupported() {
+        final var exception = new org.springframework.web.HttpRequestMethodNotSupportedException("PATCH", List.of("GET", "POST"));
+
+        final var response = handler.handleMethodNotSupported(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(response.getHeaders().getAllow()).containsExactlyInAnyOrder(org.springframework.http.HttpMethod.GET, org.springframework.http.HttpMethod.POST);
+        assertThat(response.getBody().getStatus()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED.value());
+        assertThat(response.getBody().getDetail()).isEqualTo("Método HTTP não suportado nesta rota");
+    }
+
+    @Test
+    @DisplayName("HttpMediaTypeNotSupportedException vira 415, não 500")
+    void mediaTypeNotSupported() {
+        final var exception = new org.springframework.web.HttpMediaTypeNotSupportedException(
+                org.springframework.http.MediaType.TEXT_PLAIN, List.of(org.springframework.http.MediaType.APPLICATION_JSON));
+
+        final var response = handler.handleMediaTypeNotSupported(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(response.getBody().getStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value());
+        assertThat(response.getBody().getDetail()).isEqualTo("Tipo de conteúdo não suportado");
+    }
+
+    @Test
     @DisplayName("Exceção não mapeada vira 500 genérico — nunca ecoa a mensagem/stack real")
     void unexpectedExceptionUsesGenericMessage() {
         final var response = handler.handleUnexpected(new IllegalStateException("NPE em algum lugar sensível"), request);
