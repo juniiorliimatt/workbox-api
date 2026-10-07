@@ -58,7 +58,9 @@ Profiles disponíveis (`spring.profiles.active`):
 Variáveis de ambiente relevantes: `PORT` (default 7051), `JWT_SECRET`, `DATABASE_URL`,
 `POSTGRES_USER`/`POSTGRES_PASSWORD` (default `workbox_service`/`workbox_service` — role
 restrito ao schema `workbox`, não o superusuário), `SCHEMA` (default `workbox`),
-`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` (ver [Refresh tokens (Redis)](#refresh-tokens-redis)).
+`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` (ver [Refresh tokens (Redis)](#refresh-tokens-redis)),
+`CORS_ALLOWED_ORIGINS` (lista separada por vírgula das origens do browser liberadas; default
+`http://localhost:7053,http://127.0.0.1:7053` — nunca `*`, o front usa `withCredentials`; o E2E libera `http://localhost:5174`).
 
 Postgres local sobe via `docker-compose.yml` na raiz do monorepo (ver [README
 raiz](../README.md#rodando-localmente)) na porta **7050**, não 5432 — passe

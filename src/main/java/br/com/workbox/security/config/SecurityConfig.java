@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.MessageSourceAccessor;
@@ -34,6 +35,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author CLAUDE-CODE
@@ -62,6 +64,10 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final ApiClientUserDetailsService apiClientUserDetailsService;
     private final MessageSourceAccessor messages;
+
+    /** Origens do browser liberadas no CORS — {@code cors.allowed-origins} (env {@code CORS_ALLOWED_ORIGINS}), mesmo nome dos demais serviços. */
+    @Value("${cors.allowed-origins:http://localhost:7053,http://127.0.0.1:7053}")
+    private List<String> allowedOrigins;
 
     @Autowired
     public SecurityConfig(final Environment env, final JwtService jwtService,
@@ -194,7 +200,7 @@ public class SecurityConfig {
         // NOSONAR java:S5122 - CORS habilitado de propósito: allowlist explícita de origens (abaixo), nunca "*" com credenciais.
         final CorsConfiguration configuration = new CorsConfiguration().applyPermitDefaultValues(); // NOSONAR
         // Origin enviado pelo browser nunca tem barra final — CorsConfiguration faz match exato.
-        configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:7053","http://localhost:7053"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("POST", "GET", "PUT", "DELETE", "OPTIONS"));
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
